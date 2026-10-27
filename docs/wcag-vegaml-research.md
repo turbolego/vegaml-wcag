@@ -22,8 +22,8 @@ usage**.
 | **Decision engine** | Linear probe (1024→63) + sigmoid; trained from scratch on WCAG data | Physics engine + per-reader port (14.3M shared weights); zero-shot off-the-shelf, then `fit()` for domain heads or `attach()` to add new readers |
 | **Training data** | AI-WCAG-Gauntlet (axe-core labels on real websites, 40 labeled samples) | Synthetic corpus (1000+ prompts per question) + calibration on user's own [state,label] pairs; no task-specific data shipped |
 | **WCAG criteria coverage** | 63 criteria, 52 have **no positive training example** (media, timing, sensory, reflow, etc.) → output those columns as noise | No WCAG data shipped; answer any question type (boolean/choice/score); calibrated probabilities + conformal sets + abstain flag |
-| **Export / serving** | ONNX → ONNX Runtime Web (browser, 16 data-parts, int8, ~395MB total) | Python HTTP API (`vegaml-serve`), MCP server, ONNX export (`export_engine()`), MLX (Apple silicon), Docker |
-| **Browser deployment** | Yes — demo at `turbolego.github.io/LayaWCAG/` | Server-side: a thin web UI on `vegaml-serve` (this repo: `docs/wcag-demo/`); the reader does not run in-browser |
+| **Export / serving** | ONNX → ONNX Runtime Web (browser, 16 data-parts, int8, ~395MB total) | Python HTTP API (`vegaml-serve`), MCP server, ONNX/ WASM reader and engine export, MLX (Apple silicon), Docker |
+| **Browser deployment** | Yes — demo at `turbolego.github.io/LayaWCAG/` | Yes — `docs/wcag-demo/` runs the matching reader and engine locally with ONNX Runtime Web + WASM |
 
 ## Where vegaml Extends the Use Case
 
@@ -71,12 +71,11 @@ fits a new port from any HuggingFace model to the shared engine — without retr
 engine. This lets you experiment with 7B, 13B, or 27B readers while keeping the same
 WCAG question sheet.
 
-### 5. **ONNX export — the missing link for browser deployment**
-The main gap: vegaml can export to ONNX (`export_engine()`), but the current export
-targets CPU/GPU inference, not the browser-optimized ONNX Runtime Web path that LayaWCAG
-uses. If the ONNX export were adapted to the same input format, vegaml could ship a
-browser demo; until then the browser pattern is a server + thin UI (this is exactly what
-`docs/wcag-demo/` does).
+### 5. **Browser deployment with WASM**
+vegaml exports its trained reader and decision engine as matching ONNX graphs for
+ONNX Runtime Web. The `docs/wcag-demo/` browser backend runs both locally, without
+sending page content to the hosted API. See that demo's README for the export command,
+bundle requirements, model input limits, and performance notes.
 
 ## Zero-shot PoC
 

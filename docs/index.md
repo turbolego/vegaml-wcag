@@ -19,6 +19,7 @@ surfaces around it.
 | [ONNX](onnx.md) | Export the engine, run it anywhere onnxruntime does |
 | [MLX](mlx.md) | The engine on Apple silicon without torch |
 | [Docker](docker.md) | The HTTP server as a container |
+| [WCAG research](wcag-vegaml-research.md) | WCAG 2.2 model comparison and browser/WASM demo notes |
 
 Every extra is additive and none changes the core: `pip install vegaml` stays enough for the
 Python API, and `vegaml[serve]`, `[mcp]`, `[structured]`, `[onnx]` and `[mlx]` each add exactly
