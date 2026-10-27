@@ -13,10 +13,6 @@ async function fetchJSON(url) {
   return (await fetchResponse(url)).json();
 }
 
-async function fetchBytes(url) {
-  return new Uint8Array(await (await fetchResponse(url)).arrayBuffer());
-}
-
 function sameReader(reader, cfg) {
   const declared = (cfg.backbone_name || cfg.backbone || "").split("/").pop().toLowerCase();
   const exported = (reader.backbone || "").split("/").pop().toLowerCase();
@@ -111,12 +107,76 @@ export class VegamlWASM {
     return instance;
   }
 
-  constructor({ modelDir = "./wasm-model/" } = {}) {
+  constructor({ modelDir = "./wasm-model/", onProgress = () => {} } = {}) {
     this.modelDir = new URL(modelDir, location.href);
+    this.onProgress = onProgress;
+    this.cacheHits = 0;
+    this.cacheWriteFailed = false;
+  }
+
+  reportProgress(progress, callback = this.onProgress) {
+    try {
+      callback(progress);
+    } catch {
+    }
+  }
+
+  async fetchBytes(assetUrl, { label, expectedBytes, onProgress } = {}) {
+    let response;
+    let cachedAsset = false;
+    if (this.assetCache) {
+      try {
+        response = await this.assetCache.match(assetUrl);
+        if (response) {
+          cachedAsset = true;
+          this.cacheHits++;
+        }
+      } catch {
+        response = null;
+      }
+    }
+
+    if (!response) response = await fetchResponse(assetUrl);
+    const responseBytes = Number(response.headers.get("content-length")) || expectedBytes || 0;
+    const chunks = [];
+    let loaded = 0;
+    if (response.body?.getReader) {
+      const reader = response.body.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.length;
+        this.reportProgress({ stage: "download", label, loaded, total: responseBytes, cached: cachedAsset }, onProgress);
+      }
+    } else {
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      chunks.push(bytes);
+      loaded = bytes.length;
+      this.reportProgress({ stage: "download", label, loaded, total: responseBytes, cached: cachedAsset }, onProgress);
+    }
+
+    const bytes = new Uint8Array(loaded);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    if (this.assetCache && !cachedAsset) {
+      try {
+        const headers = new Headers(response.headers);
+        headers.set("content-length", String(bytes.length));
+        await this.assetCache.put(assetUrl, new Response(bytes, { headers }));
+      } catch {
+        this.cacheWriteFailed = true;
+      }
+    }
+    return bytes;
   }
 
   async initialize() {
     const url = (path) => new URL(path, this.modelDir).href;
+    this.reportProgress({ stage: "status", message: "Loading model metadata and tokenizer..." });
     const [metadata, manifest, tokenizerJson, tokenizerConfig] = await Promise.all([
       fetchJSON(url("metadata.json")),
       fetchJSON(url("manifest.json")),
@@ -153,24 +213,63 @@ export class VegamlWASM {
     const readerVariant = manifest.variants?.reader;
     const engineVariant = manifest.variants?.engine;
     if (!readerVariant || !engineVariant) throw new Error("WASM manifest must include reader and engine models");
+    const bundleFingerprint = Object.values(manifest.variants)
+      .flatMap((variant) => [variant.onnx_sha256 || variant.sha256, variant.data?.sha256])
+      .filter(Boolean)
+      .map((hash) => hash.slice(0, 12))
+      .join("-");
+    this.cacheName = `vegaml-wcag-wasm-v${manifest.version}-${bundleFingerprint}`;
+    if ("caches" in globalThis) {
+      try {
+        this.assetCache = await caches.open(this.cacheName);
+      } catch {
+        this.assetCache = null;
+      }
+    }
     const [readerGraph, readerData, engineGraph, engineData] = await Promise.all([
       this.loadGraph(readerVariant, url),
       this.loadExternalData(readerVariant, url),
       this.loadGraph(engineVariant, url),
       this.loadExternalData(engineVariant, url),
     ]);
+    this.reportProgress({ stage: "status", message: "Creating reader inference session..." });
     this.readerSession = await this.createSession(readerGraph, readerData);
+    this.reportProgress({ stage: "status", message: "Creating decision-engine session..." });
     this.engineSession = await this.createSession(engineGraph, engineData);
     this.initialized = true;
+    if ("caches" in globalThis && this.cacheName) {
+      try {
+        const oldCaches = (await caches.keys()).filter((name) =>
+          name.startsWith("vegaml-wcag-wasm-v") && name !== this.cacheName);
+        await Promise.all(oldCaches.map((name) => caches.delete(name)));
+      } catch {
+      }
+    }
+    this.reportProgress({
+      stage: "ready",
+      threads: ort.env.wasm.numThreads,
+      cachedAssets: this.cacheHits,
+      cacheAvailable: Boolean(this.assetCache) && !this.cacheWriteFailed,
+      cacheWriteFailed: this.cacheWriteFailed,
+    });
   }
 
-  async loadAsset(entry, url) {
+  async loadAsset(entry, url, label = entry?.name) {
     if (!entry) return null;
-    if (!entry.parts?.length) return fetchBytes(url(entry.name));
+    if (!entry.parts?.length) {
+      return this.fetchBytes(url(entry.name), { label, expectedBytes: entry.size });
+    }
     const result = new Uint8Array(entry.size);
     let offset = 0;
     for (const part of entry.parts) {
-      const bytes = await fetchBytes(url(part));
+      const bytes = await this.fetchBytes(url(part), {
+        label,
+        onProgress: (progress) => this.reportProgress({
+          ...progress,
+          loaded: offset + progress.loaded,
+          total: entry.size,
+        }),
+      });
       for (let index = 0; index < bytes.length; index++) bytes[index] ^= 0xFF;
       if (offset + bytes.length > result.length) throw new Error(`Chunked asset exceeds declared size: ${entry.name}`);
       result.set(bytes, offset);
@@ -188,14 +287,17 @@ export class VegamlWASM {
         name: variant.onnx,
         size: variant.onnx_size,
         parts: variant.onnx_parts,
-      }, url);
+      }, url, `${variant.label || variant.onnx} ONNX graph`);
     }
-    return fetchBytes(url(variant.onnx));
+    return this.fetchBytes(url(variant.onnx), {
+      label: `${variant.label || variant.onnx} ONNX graph`,
+      expectedBytes: variant.onnx_size,
+    });
   }
 
   async loadExternalData(variant, url) {
     if (!variant.data) return [];
-    const bytes = await this.loadAsset(variant.data, url);
+    const bytes = await this.loadAsset(variant.data, url, `${variant.label || variant.data.name} weights`);
     return [{ path: variant.data.name, data: bytes }];
   }
 
@@ -207,7 +309,7 @@ export class VegamlWASM {
     });
   }
 
-  async readerFeatures(items) {
+  async readerFeatures(items, onProgress = this.onProgress) {
     const { feature_layers: featureLayers, option_layers: optionLayers } = this.config;
     const outputLayers = this.metadata.reader.output_layers;
     const hiddenSize = this.metadata.reader.hidden_size;
@@ -220,6 +322,7 @@ export class VegamlWASM {
 
     for (let begin = 0; begin < items.length; begin += readerBatchSize) {
       const batch = items.slice(begin, begin + readerBatchSize);
+      this.reportProgress({ stage: "inference", completed: begin, total: items.length }, onProgress);
       const length = this.metadata.reader.fixed_sequence_length ||
         Math.max(...batch.map((item) => item.ids.length));
       if (batch.some((item) => item.ids.length > length)) {
@@ -235,6 +338,7 @@ export class VegamlWASM {
         input_ids: new ort.Tensor("int64", inputIds, [batch.length, length]),
         attention_mask: new ort.Tensor("int64", attention, [batch.length, length]),
       });
+      this.reportProgress({ stage: "inference", completed: begin + batch.length, total: items.length }, onProgress);
 
       batch.forEach((item, row) => {
         const targetRow = begin + row;
@@ -284,7 +388,7 @@ export class VegamlWASM {
     return { features, options, chunks, chunkMask };
   }
 
-  async decide(state, questions) {
+  async decide(state, questions, onProgress = this.onProgress) {
     if (!this.initialized) throw new Error("VegamlWASM not initialized");
     const start = performance.now();
     const entries = Object.entries(questions);
@@ -293,7 +397,7 @@ export class VegamlWASM {
     }
     const text = typeof state === "string" ? state : JSON.stringify(state);
     const prompts = entries.map(([, question]) => buildPrompt(this.tokenizer, text, question, this.config, this.metadata.reader));
-    const { features, options, chunks, chunkMask } = await this.readerFeatures(prompts);
+    const { features, options, chunks, chunkMask } = await this.readerFeatures(prompts, onProgress);
     const count = entries.length;
     const hiddenSize = this.metadata.reader.hidden_size;
     const optionLayers = this.config.option_layers.length;
@@ -310,6 +414,7 @@ export class VegamlWASM {
       inputs.chunk_mask = new ort.Tensor("bool", chunkMask, [count, chunkCount]);
     }
 
+    this.reportProgress({ stage: "status", message: "Scoring criteria with the decision engine..." }, onProgress);
     const output = await this.engineSession.run(inputs);
     const calibration = this.config.calibration || {};
     const theta = calibration.theta?.[2] || [0, 0, 0, 0, 0];

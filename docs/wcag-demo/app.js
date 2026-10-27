@@ -50,6 +50,45 @@ function setStatus(msg, cls = "") {
   s.className = "status " + cls;
 }
 
+function formatMiB(bytes) {
+  return (bytes / (1024 * 1024)).toFixed(0);
+}
+
+function updateWasmProgress(event) {
+  const progress = $("loadProgress");
+  if (event.stage === "download") {
+    progress.hidden = !event.total;
+    if (event.total) {
+      progress.max = event.total;
+      progress.value = Math.min(event.loaded, event.total);
+    }
+    const action = event.cached ? "Using cached" : "Downloading";
+    const amount = event.total
+      ? `${formatMiB(event.loaded)} / ${formatMiB(event.total)} MiB`
+      : `${formatMiB(event.loaded)} MiB`;
+    setStatus(`${action} ${event.label}: ${amount}`, "loading");
+    return;
+  }
+  if (event.stage === "inference") {
+    progress.hidden = false;
+    progress.max = event.total;
+    progress.value = event.completed;
+    setStatus(`Scoring WCAG questions: ${event.completed} / ${event.total}`, "loading");
+    return;
+  }
+  progress.hidden = true;
+  if (event.stage === "ready") {
+    const cacheNote = event.cacheWriteFailed || !event.cacheAvailable
+      ? " Browser caching unavailable; model files may download again next visit."
+      : event.cachedAssets
+        ? ` Reused ${event.cachedAssets} cached files.`
+        : " Model files cached for the next visit.";
+    setStatus(`WASM model ready · ${event.threads} thread${event.threads === 1 ? "" : "s"}.${cacheNote}`, "ok");
+    return;
+  }
+  if (event.message) setStatus(event.message, "loading");
+}
+
 function buildQuestions() {
   const q = {};
   for (const c of criteria) q[c.criterion] = { type: "boolean", instructions: c.instructions };
@@ -66,7 +105,7 @@ async function loadWASM() {
   
   try {
     const { VegamlWASM } = await import('./wasm-model/vegaml-wasm.js');
-    const instance = await VegamlWASM.create({ modelDir: WASM_MODEL_DIR });
+    const instance = await VegamlWASM.create({ modelDir: WASM_MODEL_DIR, onProgress: updateWasmProgress });
     return instance;
   } catch (e) {
     throw new Error("Failed to load WASM model: " + e.message);
@@ -93,7 +132,7 @@ async function analyze() {
         wasmInstance = await loadWASM();
         modelLoadMs = Math.round(performance.now() - loadStarted);
       }
-      out = await wasmInstance.decide($("html").value.trim(), questions);
+      out = await wasmInstance.decide($("html").value.trim(), questions, updateWasmProgress);
       out.mode = "wasm";
       if (modelLoadMs) out.model_load_ms = modelLoadMs;
     } else {
@@ -136,6 +175,7 @@ async function analyze() {
     setStatus("decide() failed: " + e.message, "err");
   } finally {
     $("analyze").disabled = false;
+    $("loadProgress").hidden = true;
   }
 }
 
