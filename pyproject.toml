@@ -64,7 +64,7 @@ Issues = "https://github.com/NandhaKishorM/vegaml/issues"
 packages = ["vegaml"]
 
 [tool.setuptools.package-data]
-vegaml = ["py.typed"]
+vegaml = ["py.typed", "wasm_loader.js"]
 
 [tool.ruff]
 line-length = 110

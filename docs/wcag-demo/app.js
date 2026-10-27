@@ -62,7 +62,7 @@ let wasmInstance = null;
 async function loadWASM() {
   if (wasmInstance) return wasmInstance;
   
-  setStatus("Loading WASM model... (first load downloads ~500MB)", "loading");
+  setStatus("Loading the browser reader and engine models...", "loading");
   
   try {
     const { VegamlWASM } = await import('./wasm-model/vegaml-wasm.js');
@@ -80,19 +80,22 @@ async function analyze() {
   $("analyze").disabled = true;
   setStatus("Asking vegaml 63 questions...", "loading");
   const t0 = performance.now();
+  const questions = buildQuestions();
   
   try {
     let out;
+    let modelLoadMs = 0;
     if (backendMode === "wasm") {
       // WASM backend
       if (!wasmInstance) {
         setStatus("Loading WASM model...", "loading");
+        const loadStarted = performance.now();
         wasmInstance = await loadWASM();
+        modelLoadMs = Math.round(performance.now() - loadStarted);
       }
-      const questions = buildQuestions();
-      out = await wasmInstance.decide($("html").value.trim(), buildQuestions());
-      out.latency_ms = Math.round(performance.now() - t0);
+      out = await wasmInstance.decide($("html").value.trim(), questions);
       out.mode = "wasm";
+      if (modelLoadMs) out.model_load_ms = modelLoadMs;
     } else {
       // Modal backend
       const apiBase = server();
@@ -100,11 +103,18 @@ async function analyze() {
       out = await fetchJSON(decideUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ state: $("html").value.trim(), questions: buildQuestions() }),
+        body: JSON.stringify({ state: $("html").value.trim(), questions }),
       });
     }
-    const ms = Math.round(performance.now() - t0);
-    lastReport = { html: $("html").value.trim(), threshold: parseFloat($("threshold").value) || 0.5, latency_ms: ms, server: server(), criteria: [], raw: out };
+    const totalMs = Math.round(performance.now() - t0);
+    const inferenceMs = backendMode === "wasm"
+      ? (out.latency_ms || Math.max(0, totalMs - modelLoadMs))
+      : (out.latency_ms || totalMs);
+    lastReport = {
+      html: $("html").value.trim(), threshold: parseFloat($("threshold").value) || 0.5,
+      latency_ms: inferenceMs, total_latency_ms: totalMs,
+      model_load_ms: modelLoadMs || null, server: server(), criteria: [], raw: out,
+    };
     const answers = out.answers || {};
     const rows = criteria.map((c) => {
       const a = answers[c.criterion] || {};
@@ -119,8 +129,9 @@ async function analyze() {
     rows.sort((x, y) => (y.p_violated ?? -1) - (x.p_violated ?? -1));
     lastReport.criteria = rows;
     const violations = rows.filter((r) => r.p_violated != null && r.p_violated >= (parseFloat($("threshold").value) || 0.5));
-    render(rows, violations, out, ms);
-    setStatus("Done in " + (out.latency_ms || ms) + " ms — " + violations.length + " of " + rows.length + " criteria at or above p ≥ " + ($("threshold").value || 0.5), "ok");
+    render(rows, violations, out);
+    const loadNote = modelLoadMs ? " Model loaded in " + (modelLoadMs / 1000).toFixed(1) + " s." : "";
+    setStatus("Done in " + inferenceMs + " ms inference — " + violations.length + " of " + rows.length + " criteria at or above p ≥ " + ($("threshold").value || 0.5) + "." + loadNote, "ok");
   } catch (e) {
     setStatus("decide() failed: " + e.message, "err");
   } finally {
@@ -133,12 +144,13 @@ function bar(p) {
   return '<div class="bar"><i style="width:' + w + '%"></i></div>';
 }
 
-function render(rows, violations, out, ms) {
+function render(rows, violations, out) {
   const s = $("summary");
   s.innerHTML =
     '<span class="pill">' + violations.length + ' violation' + (violations.length === 1 ? "" : "s") + ' / ' + rows.length + '</span>' +
     '<span class="pill">p ≥ ' + ($("threshold").value || 0.5) + '</span>' +
-    '<span class="pill">' + (out.latency_ms || 0) + ' ms</span>' +
+    '<span class="pill">' + (out.latency_ms || 0) + ' ms inference</span>' +
+    (out.model_load_ms ? '<span class="pill">model load ' + (out.model_load_ms / 1000).toFixed(1) + ' s</span>' : '') +
     (out.n_tokens ? '<span class="pill">' + out.n_tokens + ' tokens in</span>' : "");
 
   // Violation table
@@ -149,7 +161,7 @@ function render(rows, violations, out, ms) {
   // Full ranked table
   $("allRows").innerHTML = rows.map((r) => '<tr>\n      <td class="crit">' + r.criterion + '<span class="lv ' + r.level.toLowerCase() + '">' + r.level + '</span></td>\n      <td>' + r.description + '</td>\n      <td class="pct">' + (r.p_violated == null ? "—" : (r.p_violated * 100).toFixed(1) + "%") + '</td>\n      <td>' + (r.p_violated == null ? "—" : bar(r.p_violated)) + '</td>\n    </tr>').join("");
 
-  $("raw").textContent = JSON.stringify($("raw").raw || {}, null, 2);
+  $("raw").textContent = JSON.stringify(out, null, 2);
   $("results").classList.remove("hidden");
   $("download").classList.remove("hidden");
 }
@@ -208,7 +220,7 @@ function addBackendSelector() {
           <span>WASM (browser)</span>
         </label>
         <span style="font-size: 0.85rem; color: var(--ink2); margin-left: 1rem;">
-          Modal: ~1 min cold start, then ~1s/query | WASM: ~30s load, then instant
+          Modal: ~1 min cold start, then ~1s/query | WASM: ~430 MiB model download, then minutes per scan
         </span>
       </div>
     </div>
@@ -254,7 +266,7 @@ async function checkServer() {
 
 async function loadWASMIfNeeded() {
   if (!wasmInstance) {
-    setStatus("Loading WASM model... (first load downloads model)", "loading");
+    setStatus("Loading the browser reader and engine models...", "loading");
     const { VegamlWASM } = await import('./wasm-model/vegaml-wasm.js');
     wasmInstance = await VegamlWASM.create({ modelDir: WASM_MODEL_DIR });
   }

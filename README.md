@@ -452,6 +452,7 @@ Each surface is one extra; none changes the core, and [docs/](docs/index.md) cov
 | [ONNX](docs/onnx.md) | `vegaml[onnx]` | export the engine, run it anywhere onnxruntime does |
 | [MLX](docs/mlx.md) | `vegaml[mlx]` | the engine on Apple silicon without torch in the process |
 | [Docker](docs/docker.md) | repo | `docker compose up`: the HTTP server as a container |
+| [WCAG 2.2 browser demo](docs/wcag-demo/README.md) | [GitHub Pages](https://turbolego.github.io/vegaml-wcag/wcag-demo/) | score short HTML snippets against 63 success criteria with vegaml's hosted backend or its int4 WASM reader and decision engine |
 
 Runnable starts for each live in [examples/](examples/).
 

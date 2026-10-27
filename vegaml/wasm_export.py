@@ -11,25 +11,173 @@ Components exported:
 3. Tokenizer: Exported as JSON for WASM usage
 
 Usage:
-    python -m vegaml.wasm_export --checkpoint vegaml-0.8b --output-dir ./wasm-model
-    python -m vegaml.wasm_export --checkpoint vegaml-4b --output-dir ./wasm-model --quantize int8
+    python -m vegaml.wasm_export --checkpoint 0.8b --output-dir ./wasm-model
+    python -m vegaml.wasm_export --checkpoint 0.8b --output-dir ./wasm-model --quantize int4 --max-seq-len 128
 """
 
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager, nullcontext
 import json
-import os
-import shutil
-import sys
+import hashlib
 from pathlib import Path
-from typing import Optional
+from types import MethodType
+from typing import Iterator, Optional
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 
-from .onnx_export import export_engine as export_engine_internal
-from ._common import VegaEngine
+from ._universal import UniversalEngine
+from .hub import backbone_hub_id, fetch
+from .onnx_export import _load_engine, export_engine as export_engine_internal
+
+WASM_CHUNK_BYTES = 20 * 1024 * 1024
+WASM_MAX_FILE_BYTES = 95 * 1024 * 1024
+
+
+def _unit_lower_triangular_inverse(matrix: torch.Tensor) -> torch.Tensor:
+    size = matrix.shape[-1]
+    if size == 1:
+        return torch.ones_like(matrix)
+    half = size // 2
+    upper = _unit_lower_triangular_inverse(matrix[..., :half, :half])
+    lower = _unit_lower_triangular_inverse(matrix[..., half:, half:])
+    cross = -lower @ matrix[..., half:, :half] @ upper
+    top = torch.cat((upper, torch.zeros_like(matrix[..., :half, half:])), dim=-1)
+    bottom = torch.cat((cross, lower), dim=-1)
+    return torch.cat((top, bottom), dim=-2)
+
+
+@contextmanager
+def _qwen3_5_triangular_solve_patch() -> Iterator[None]:
+    from transformers.models.qwen3_5 import modeling_qwen3_5
+
+    original_export_check = modeling_qwen3_5.is_torchdynamo_exporting
+    original_solve = torch.linalg.solve_triangular
+
+    def exportable_solve(matrix, rhs, upper=False, left=True, unitriangular=False, **kwargs):
+        if upper or not left or not unitriangular:
+            return original_solve(
+                matrix,
+                rhs,
+                upper=upper,
+                left=left,
+                unitriangular=unitriangular,
+                **kwargs,
+            )
+        return _unit_lower_triangular_inverse(matrix) @ rhs
+
+    modeling_qwen3_5.is_torchdynamo_exporting = lambda: False
+    torch.linalg.solve_triangular = exportable_solve
+    try:
+        yield
+    finally:
+        torch.linalg.solve_triangular = original_solve
+        modeling_qwen3_5.is_torchdynamo_exporting = original_export_check
+
+
+def _prepare_qwen3_5_onnx_export(model, model_type: str) -> None:
+    if not model_type.startswith("qwen3_5"):
+        return
+
+    from transformers.activations import ACT2FN
+    from transformers.models.qwen3_5 import modeling_qwen3_5
+
+    base_model = model.model
+    wrapped_forward = getattr(base_model.forward.__func__, "__wrapped__", None)
+    if wrapped_forward is None:
+        raise RuntimeError("Qwen3.5 base model is missing its exportable forward implementation")
+    base_model.forward = MethodType(wrapped_forward, base_model)
+
+    convolutions = [
+        module for name, module in model.named_modules()
+        if name.endswith(".conv1d") and isinstance(module, torch.nn.Conv1d)
+    ]
+    dimensions = {(module.kernel_size[0], module.groups) for module in convolutions}
+    if len(dimensions) != 1:
+        raise ValueError("Qwen3.5 reader must use one shared causal convolution shape for ONNX export")
+    kernel_size, groups = dimensions.pop()
+
+    def causal_conv1d_fn(hidden_states, weight, bias=None, activation=None, **kwargs):
+        sequence_length = hidden_states.shape[-1]
+        output = torch.nn.functional.conv1d(
+            hidden_states.to(weight.dtype),
+            weight.unsqueeze(1),
+            bias,
+            padding=kernel_size - 1,
+            groups=groups,
+        )[:, :, :sequence_length]
+        if activation is not None:
+            output = ACT2FN[activation](output)
+        return output.to(hidden_states.dtype)
+
+    modeling_qwen3_5.causal_conv1d_fn = causal_conv1d_fn
+
+
+def _external_data_locations(graph, onnx) -> set[str]:
+    locations = set()
+
+    def add_tensor(tensor) -> None:
+        locations.update(
+            item.value for item in tensor.external_data if item.key == "location"
+        )
+
+    def visit_graph(current) -> None:
+        for tensor in current.initializer:
+            add_tensor(tensor)
+        for sparse in current.sparse_initializer:
+            add_tensor(sparse.values)
+            add_tensor(sparse.indices)
+        for node in current.node:
+            for attribute in node.attribute:
+                if attribute.type == onnx.AttributeProto.TENSOR:
+                    add_tensor(attribute.t)
+                elif attribute.type == onnx.AttributeProto.TENSORS:
+                    for tensor in attribute.tensors:
+                        add_tensor(tensor)
+                elif attribute.type == onnx.AttributeProto.SPARSE_TENSOR:
+                    add_tensor(attribute.sparse_tensor.values)
+                    add_tensor(attribute.sparse_tensor.indices)
+                elif attribute.type == onnx.AttributeProto.SPARSE_TENSORS:
+                    for sparse in attribute.sparse_tensors:
+                        add_tensor(sparse.values)
+                        add_tensor(sparse.indices)
+                elif attribute.type == onnx.AttributeProto.GRAPH:
+                    visit_graph(attribute.g)
+                elif attribute.type == onnx.AttributeProto.GRAPHS:
+                    for nested_graph in attribute.graphs:
+                        visit_graph(nested_graph)
+
+    visit_graph(graph)
+    return locations
+
+
+def _quantize_reader_int4(graph_path: Path, output_path: Path) -> None:
+    import onnx
+    from onnxruntime.quantization.matmul_nbits_quantizer import MatMulNBitsQuantizer
+
+    graph = onnx.load(str(graph_path), load_external_data=False)
+    external_locations = _external_data_locations(graph.graph, onnx)
+
+    quantizer = MatMulNBitsQuantizer(
+        str(graph_path),
+        block_size=128,
+        is_symmetric=True,
+        op_types_to_quantize=("MatMul", "Gather"),
+    )
+    quantizer.process()
+    quantizer.model.save_model_to_file(str(output_path), True)
+
+    quantized_graph = onnx.load(str(output_path), load_external_data=False)
+    quantized_locations = _external_data_locations(quantized_graph.graph, onnx)
+    operators = {(node.domain, node.op_type) for node in quantized_graph.graph.node}
+    if not any(domain == "com.microsoft" and op == "MatMulNBits" for domain, op in operators):
+        raise RuntimeError("int4 quantization did not convert any reader MatMul weights")
+
+    graph_path.unlink()
+    for location in external_locations - quantized_locations:
+        (graph_path.parent / location).unlink(missing_ok=True)
 
 
 def export_reader_to_onnx(
@@ -38,6 +186,8 @@ def export_reader_to_onnx(
     opset: int = 18,
     quantize: Optional[str] = None,
     max_seq_len: int = 4096,
+    feature_layers: Optional[list] = None,
+    option_layers: Optional[list] = None,
 ) -> dict:
     """
     Export the reader (frozen LLM backbone) to ONNX.
@@ -71,9 +221,16 @@ def export_reader_to_onnx(
         num_layers = config.num_hidden_layers
         vocab_size = config.vocab_size
         model_type = config.model_type
+    _prepare_qwen3_5_onnx_export(model, model_type)
+    is_qwen3_5 = model_type.startswith("qwen3_5")
+    if is_qwen3_5 and max_seq_len != 128:
+        raise ValueError("Qwen3.5's current WASM export is fixed at 128 tokens; set --max-seq-len 128")
+    if is_qwen3_5 and quantize not in (None, "int4"):
+        raise ValueError("Qwen3.5 WASM export supports --quantize int4, not dynamic int8/uint8")
 
     # Export tokenizer
-    tokenizer_dir = Path("tokenizer")
+    tokenizer_dir = output_dir / "tokenizer"
+    tokenizer_dir.mkdir(parents=True, exist_ok=True)
     tokenizer.save_pretrained(tokenizer_dir)
 
     # Export tokenizer config for WASM
@@ -93,61 +250,81 @@ def export_reader_to_onnx(
     print("Exporting reader to ONNX (opset " + str(opset) + ")...")
 
     # Create dummy input for tracing
-    dummy_input_ids = torch.ones((1, 128), dtype=torch.int64)
-    dummy_input_mask = torch.ones((1, 128), dtype=torch.int64)
+    dummy_input_ids = torch.ones((1, max_seq_len), dtype=torch.int64)
+    dummy_input_mask = torch.ones((1, max_seq_len), dtype=torch.int64)
 
     # We need to export the model's forward pass that returns hidden states
     # The vegaml reader uses the last hidden states from specific layers
 
+    taps = sorted(set((feature_layers or []) + (option_layers or [])))
+    if not taps:
+        taps = list(range(num_layers))
+    if any(not isinstance(layer, int) or layer < 0 or layer >= num_layers for layer in taps):
+        raise ValueError("feature and option layers must be valid zero-based reader layer indices")
+
     class ReaderWrapper(torch.nn.Module):
-        def __init__(self, model):
+        def __init__(self, model, layer_indices):
             super().__init__()
             self.model = model
+            self.layer_indices = layer_indices
 
         def forward(self, input_ids, attention_mask):
             outputs = self.model(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
+                use_cache=False,
                 output_hidden_states=True,
                 return_dict=True,
             )
-            # Return hidden states from all layers
-            return outputs.hidden_states
+            return tuple(outputs.hidden_states[i + 1] for i in self.layer_indices)
 
-    wrapper = ReaderWrapper(model).eval()
-
-    # Dynamic axes for batch and sequence length
-    num_layers = num_layers
+    wrapper = ReaderWrapper(model, taps).eval()
 
     input_names = ["input_ids", "attention_mask"]
-    output_names = ["hidden_states_" + str(i) for i in range(num_layers + 1)]
+    output_names = ["layer_" + str(i) for i in taps]
+    if is_qwen3_5:
+        dynamic_axes = {name: {0: "batch"} for name in input_names + output_names}
+        export_args = {
+            "dynamic_axes": dynamic_axes,
+            "dynamo": False,
+            "do_constant_folding": True,
+        }
+    else:
+        batch_dim = torch.export.Dim("batch", min=1, max=16)
+        sequence_dim = torch.export.Dim("sequence", min=1, max=max_seq_len)
+        export_args = {
+            "dynamic_shapes": (
+                {0: batch_dim, 1: sequence_dim},
+                {0: batch_dim, 1: sequence_dim},
+            ),
+            "dynamo": True,
+            "optimize": False,
+        }
 
-    dynamic_axes = {}
-    dynamic_axes["input_ids"] = {0: "batch", 1: "sequence"}
-    dynamic_axes["attention_mask"] = {0: "batch", 1: "sequence"}
-    for i in range(num_layers + 1):
-        dynamic_axes["hidden_states_" + str(i)] = {0: "batch", 1: "sequence"}
-
-    with torch.no_grad():
+    export_context = _qwen3_5_triangular_solve_patch() if is_qwen3_5 else nullcontext()
+    with torch.no_grad(), export_context:
         torch.onnx.export(
             wrapper,
             (dummy_input_ids, dummy_input_mask),
             str(output_dir / "reader.onnx"),
             input_names=input_names,
             output_names=output_names,
-            dynamic_axes=dynamic_axes,
             opset_version=opset,
-            do_constant_folding=True,
+            **export_args,
         )
 
     # Quantize if requested
-    if quantize:
+    if quantize == "int4":
+        _quantize_reader_int4(output_dir / "reader.onnx", output_dir / "reader.int4.onnx")
+    elif quantize:
         from onnxruntime.quantization import quantize_dynamic, QuantType
         quant_path = str(output_dir / "reader.int8.onnx")
         quantize_dynamic(
             str(output_dir / "reader.onnx"),
             quant_path,
             weight_type=QuantType.QInt8 if quantize == "int8" else QuantType.QUInt8,
+            op_types_to_quantize=["MatMul"],
+            use_external_data_format=True,
         )
         print("Quantized model saved to " + quant_path)
 
@@ -160,9 +337,15 @@ def export_reader_to_onnx(
         "num_layers": num_layers,
         "vocab_size": vocab_size,
         "max_seq_len": max_seq_len,
+        **({"fixed_sequence_length": 128} if is_qwen3_5 else {}),
+        "bos_token_id": tokenizer.bos_token_id,
+        "pad_token_id": tokenizer.pad_token_id,
         "opset": opset,
         "quantized": quantize is not None,
         "quantization_type": quantize,
+        "feature_layers": feature_layers or [],
+        "option_layers": option_layers or [],
+        "output_layers": taps,
     }
 
     with open(str(output_dir / "reader_metadata.json"), "w") as f:
@@ -173,8 +356,6 @@ def export_reader_to_onnx(
         json.dump(tokenizer_config, f, indent=2)
 
     # Copy tokenizer files
-    shutil.copytree(tokenizer_dir, output_dir / "tokenizer", dirs_exist_ok=True)
-
     print("Reader exported to " + str(output_dir))
     return metadata
 
@@ -190,12 +371,11 @@ def export_engine_to_onnx(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    engine, cfg = _load_engine(str(checkpoint_dir))
+    if cfg.get("port"):
+        engine = UniversalEngine(str(checkpoint_dir), cfg, engine)
     engine_path = str(output_dir / "engine.onnx")
-    export_engine_internal(str(checkpoint_dir), engine_path, opset=opset)
-
-    # Load metadata
-    with open(str(checkpoint_dir / "vega_config.json")) as f:
-        cfg = json.load(f)
+    export_engine_internal(engine, engine_path, opset=opset)
 
     metadata = {
         "model_type": "engine",
@@ -227,6 +407,24 @@ def create_wasm_bundle(
     - JavaScript loader module
     """
 
+    quantization = reader_metadata.get("quantization_type")
+    reader_name = (
+        "reader.int4.onnx" if quantization == "int4"
+        else "reader.int8.onnx" if reader_metadata.get("quantized")
+        else "reader.onnx"
+    )
+    variants = {
+        "reader": _build_variant(output_dir, reader_name, "vegaml reader"),
+        "engine": _build_variant(output_dir, "engine.onnx", "vega-U decision engine"),
+    }
+    manifest = {
+        "version": 1,
+        "source": "vegaml",
+        "chunk_bytes": WASM_CHUNK_BYTES,
+        "variants": variants,
+    }
+    (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+
     # Create the main metadata file for the browser
     bundle_metadata = {
         "version": "1.0",
@@ -243,7 +441,7 @@ def create_wasm_bundle(
             ]
         },
         "files": {
-            "reader": ("reader.int8.onnx" if reader_metadata.get("quantized") else "reader.onnx"),
+            "reader": reader_name,
             "engine": "engine.onnx",
             "tokenizer": "tokenizer/",
         },
@@ -253,8 +451,7 @@ def create_wasm_bundle(
         json.dump(bundle_metadata, f, indent=2)
 
     # Create the JavaScript loader module
-    js_loader = generate_js_loader(bundle_metadata)
-    (output_dir / "vegaml-wasm.js").write_text(js_loader)
+    (output_dir / "vegaml-wasm.js").write_text(generate_js_loader(bundle_metadata))
 
     # Create a simple HTML demo
     html_demo = generate_html_demo(bundle_metadata)
@@ -263,243 +460,73 @@ def create_wasm_bundle(
     print("WASM bundle created in " + str(output_dir))
 
 
+def _asset_entry(path: Path, output_dir: Path) -> dict:
+    size = path.stat().st_size
+    digest = hashlib.sha256()
+    parts = []
+    if size <= WASM_MAX_FILE_BYTES:
+        with path.open("rb") as source:
+            for block in iter(lambda: source.read(WASM_CHUNK_BYTES), b""):
+                digest.update(block)
+        return {"name": path.name, "size": size, "sha256": digest.hexdigest()}
+
+    chunk_dir = output_dir / "chunks"
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+    with path.open("rb") as source:
+        index = 0
+        while block := source.read(WASM_CHUNK_BYTES):
+            digest.update(block)
+            encoded = bytes(value ^ 0xFF for value in block)
+            part = chunk_dir / (path.name + ".part.%03d" % index)
+            part.write_bytes(encoded)
+            parts.append("chunks/" + part.name)
+            index += 1
+
+    path.unlink()
+    return {"name": path.name, "size": size, "sha256": digest.hexdigest(), "parts": parts}
+
+
+def _build_variant(output_dir: Path, filename: str, label: str) -> dict:
+    graph = output_dir / filename
+    if not graph.is_file():
+        raise FileNotFoundError("exported ONNX graph is missing: " + str(graph))
+
+    import onnx
+
+    model = onnx.load(str(graph), load_external_data=False)
+    locations = {
+        item.value
+        for initializer in model.graph.initializer
+        for item in initializer.external_data
+        if item.key == "location"
+    }
+    if len(locations) > 1:
+        raise ValueError("WASM export supports one external-data file per ONNX graph")
+
+    variant = {"label": label, "onnx": filename}
+    if graph.stat().st_size > WASM_MAX_FILE_BYTES:
+        entry = _asset_entry(graph, output_dir)
+        variant["onnx_size"] = entry["size"]
+        variant["onnx_sha256"] = entry["sha256"]
+        variant["onnx_parts"] = entry["parts"]
+    else:
+        entry = _asset_entry(graph, output_dir)
+        variant["onnx_size"] = entry["size"]
+        variant["onnx_sha256"] = entry["sha256"]
+
+    if locations:
+        location = next(iter(locations))
+        external_data = output_dir / location
+        if not external_data.is_file():
+            raise FileNotFoundError("ONNX external-data file is missing: " + str(external_data))
+        variant["data"] = _asset_entry(external_data, output_dir)
+    return variant
+
+
 def generate_js_loader(metadata: dict) -> str:
     """Generate the JavaScript loader module for onnxruntime-web."""
-    meta_json = json.dumps(metadata, indent=2)
+    return Path(__file__).with_name("wasm_loader.js").read_text(encoding="utf-8")
 
-    js = """// vegaml WASM Browser Loader
-// Auto-generated from vegaml WASM export
-//
-// Usage:
-//   import { VegamlWASM } from './vegaml-wasm.js';
-//   const vegaml = await VegamlWASM.create({ modelDir: './wasm-model/' });
-//   const result = await vegaml.decide(html, questions);
-
-export class VegamlWASM {
-    constructor() {
-        this.ort = null;
-        this.readerSession = null;
-        this.engineSession = null;
-        this.tokenizer = null;
-        this.metadata = " + meta_json + ";
-        this.initialized = false;
-    }
-
-    static async create(options) {
-        var opts = options || {};
-        var modelDir = opts.modelDir || './';
-        var instance = new VegamlWASM();
-        await instance._init(modelDir);
-        return instance;
-    }
-
-    async _init(modelDir) {
-        // Load onnxruntime-web
-        var ort = await import('onnxruntime-web');
-        this.ort = ort;
-
-        // Load metadata
-        var metaResp = await fetch(modelDir + '/metadata.json');
-        this.metadata = await metaResp.json();
-
-        // Initialize tokenizer
-        await this._loadTokenizer(modelDir + '/tokenizer');
-
-        // Create ONNX Runtime sessions
-        var readerPath = modelDir + '/' + this.metadata.files.reader;
-        var enginePath = modelDir + '/engine.onnx';
-
-        // Use WASM backend for browser
-        this.readerSession = await this.ort.InferenceSession.create(readerPath, {
-            executionProviders: ['wasm'],
-            graphOptimizationLevel: 'all'
-        });
-
-        this.engineSession = await this.ort.InferenceSession.create(enginePath, {
-            executionProviders: ['wasm'],
-            graphOptimizationLevel: 'all'
-        });
-
-        this.initialized = true;
-        console.log('Vegaml WASM initialized successfully');
-    }
-
-    async _loadTokenizer(tokenizerDir) {
-        // Load tokenizer files
-        var [vocabResp, mergesResp, configResp] = await Promise.all([
-            fetch(tokenizerDir + '/vocab.json'),
-            fetch(tokenizerDir + '/merges.txt'),
-            fetch(tokenizerDir + '/tokenizer_config.json'),
-        ]);
-
-        this.vocab = await vocabResp.json();
-        this.merges = (await mergesResp.text()).split('\\n').filter(function(l) { return l; });
-        this.tokenizerConfig = await configResp.json();
-
-        // Simple BPE tokenizer implementation
-        this.tokenizer = {
-            vocab: this.vocab,
-            merges: this.merges,
-            vocabSize: Object.keys(this.vocab).length,
-            encode: (function(text) { return this._bpeEncode(text); }).bind(this),
-        };
-    }
-
-    _bpeEncode(text) {
-        // Simple BPE encoding - in production use tokenizers.wasm
-        var words = text.toLowerCase().split(/(\\s+|[,.!?;:])/).filter(function(w) { return w; });
-        var ids = [];
-        for (var i = 0; i < words.length; i++) {
-            var word = words[i];
-            if (this.vocab[word] !== undefined) {
-                ids.push(this.vocab[word]);
-            } else {
-                // Fallback: character-level
-                for (var j = 0; j < word.length; j++) {
-                    ids.push(this.vocab[word[j]] || this.vocab['[UNK]'] || 0);
-                }
-            }
-        }
-        return ids;
-    }
-
-    async tokenize(text) {
-        var ids = this.tokenizer.encode(text);
-        var maxLen = this.metadata.reader.max_seq_len || 4096;
-        var inputIds = ids.slice(0, maxLen - 2);
-        var attentionMask = new Array(inputIds.length).fill(1);
-
-        // Pad to max length
-        var padLen = maxLen - inputIds.length;
-        if (padLen > 0) {
-            inputIds.push.apply(inputIds, new Array(padLen).fill(this.tokenizerConfig.pad_token_id || 0));
-            attentionMask.push.apply(attentionMask, new Array(padLen).fill(0));
-        }
-
-        return {
-            input_ids: new Int32Array([inputIds]),
-            attention_mask: new Int32Array([attentionMask]),
-        };
-    }
-
-    async decide(html, questions) {
-        if (!this.initialized) throw new Error('Not initialized');
-
-        // 1. Tokenize
-        var tokens = await this.tokenize(html);
-
-        // 2. Run reader (encoder)
-        var readerFeeds = {
-            input_ids: tokens.input_ids,
-            attention_mask: tokens.attention_mask,
-        };
-        var readerOutputs = await this.readerSession.run(undefined, readerFeeds);
-
-        // 3. Extract features from hidden states
-        var hiddenStates = [];
-        for (var i = 0; i <= this.metadata.reader.num_layers; i++) {
-            hiddenStates.push(readerOutputs['hidden_states_' + i]);
-        }
-
-        // Extract features (mean pooling over sequence, specific layers)
-        var features = this._extractFeatures(hiddenStates);
-
-        // 4. Prepare engine inputs
-        var engineInputs = this._prepareEngineInputs(features, questions);
-
-        // 5. Run engine
-        var engineOutputs = await this.engineSession.run(engineInputs);
-
-        // 6. Apply calibration (temperature scaling, conformal)
-        var results = this._calibrateOutputs(engineOutputs, questions);
-
-        return results;
-    }
-
-    _extractFeatures(hiddenStates) {
-        // Extract features from specific layers (feature_layers from metadata)
-        var featureLayers = this.metadata.engine.feature_layers || [];
-        // For simplicity, use last layer mean pooling
-        var lastLayer = hiddenStates[hiddenStates.length - 1];
-        // Mean pool over sequence dimension
-        // lastLayer shape: [batch, seq_len, hidden_size]
-        // Return pooled features [batch, hidden_size]
-        return lastLayer.mean(1);
-    }
-
-    _prepareEngineInputs(features, questions) {
-        // Prepare engine inputs: feats, opts, opt_mask, qtype
-        var nQuestions = Object.keys(questions).length;
-
-        return {
-            feats: features,  // [batch, d_model]
-            opts: new Float32Array(/* option embeddings */),
-            opt_mask: new Int32Array(/* option mask */),
-            qtype: new Int32Array(Object.values(questions).map(function(q) { return this._qtypeMap(q.type); }.bind(this))),
-        };
-    }
-
-    _qtypeMap(type) {
-        var map = { boolean: 0, choice: 1, score: 2 };
-        return map[type] || 0;
-    }
-
-    _calibrateOutputs(engineOutputs, questions) {
-        // Apply temperature scaling and conformal prediction
-        // This mirrors the Python calibration logic
-        var results = {};
-        var logits = engineOutputs.logits;
-
-        var qKeys = Object.keys(questions);
-        for (var i = 0; i < qKeys.length; i++) {
-            var qName = qKeys[i];
-            var q = questions[qName];
-            var qLogits = logits[i]; // [num_options]
-
-            // Softmax
-            var maxLogit = Math.max.apply(Math, qLogits);
-            var expLogits = qLogits.map(function(l) { return Math.exp(l - maxLogit); });
-            var sumExp = expLogits.reduce(function(a, b) { return a + b; }, 0);
-            var probs = expLogits.map(function(e) { return e / sumExp; });
-
-            if (questions[qName].type === 'boolean') {
-                results[qName] = {
-                    boolean: probs[1],
-                    probs: { false: probs[0], true: probs[1] },
-                    confidence: Math.max.apply(Math, probs),
-                    prediction_set: probs[1] > 0.5 ? [true] : [false],
-                };
-            } else if (questions[qName].type === 'choice') {
-                var bestIdx = probs.indexOf(Math.max.apply(Math, probs));
-                results[qName] = {
-                    choice: Object.keys(questions[qName].criteria)[bestIdx],
-                    probs: probs,
-                    confidence: Math.max.apply(Math, probs),
-                };
-            } else if (questions[qName].type === 'score') {
-                var expected = probs.reduce(function(sum, p, i) { return sum + p * i; }, 0);
-                var bestIdx = probs.indexOf(Math.max.apply(Math, probs));
-                results[qName] = {
-                    score: bestIdx,
-                    expected_score: expected,
-                    probs: probs,
-                    confidence: Math.max.apply(Math, probs),
-                };
-            }
-        }
-        return results;
-    }
-}
-
-// Export for both module and global
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { VegamlWASM: VegamlWASM };
-} else if (typeof window !== 'undefined') {
-    window.VegamlWASM = VegamlWASM;
-}
-"""
-
-    return js
 
 
 def generate_html_demo(metadata: dict) -> str:
@@ -627,55 +654,67 @@ def main():
     parser.add_argument("--checkpoint", required=True, help="Checkpoint name (e.g., '0.8b', '4b') or path")
     parser.add_argument("--output-dir", required=True, help="Output directory for WASM bundle")
     parser.add_argument("--opset", type=int, default=18, help="ONNX opset version")
-    parser.add_argument("--quantize", choices=["int8", "uint8"], help="Quantize reader model")
-    parser.add_argument("--max-seq-len", type=int, default=4096, help="Max sequence length")
+    parser.add_argument("--quantize", choices=["int8", "uint8", "int4"], help="Quantize reader model")
+    parser.add_argument("--max-seq-len", type=int, help="Max sequence length (defaults to checkpoint max_len)")
     parser.add_argument("--skip-reader", action="store_true", help="Skip reader export (engine only)")
     parser.add_argument("--skip-engine", action="store_true", help="Skip engine export")
 
     args = parser.parse_args()
+    if args.max_seq_len is not None and args.max_seq_len < 1:
+        parser.error("--max-seq-len must be positive")
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Determine backbone from checkpoint
-    if args.checkpoint in ["0.8b", "vegaml-0.8b", "vegaml"]:
-        backbone = "gpt2"  # Small causal LM that exports quickly to ONNX
-        checkpoint_name = "vegaml-0.8b"
-    elif args.checkpoint in ["4b", "vegaml-4b"]:
-        backbone = "gpt2"
-        checkpoint_name = "vegaml-4b"
-    else:
-        # Try to infer from local checkpoint
-        checkpoint_path = Path(args.checkpoint)
-        if checkpoint_path.exists():
-            with open(str(checkpoint_path / "vega_config.json")) as f:
-                cfg = json.load(f)
-            backbone = cfg.get("backbone_name", "gpt2")
-            checkpoint_name = checkpoint_path.name
-        else:
-            print("Unknown checkpoint: " + args.checkpoint)
-            print("Tip: Use '0.8b' for a small model that exports quickly to WASM")
-            sys.exit(1)
+    checkpoint_path = Path(args.checkpoint)
+    if not checkpoint_path.is_dir():
+        checkpoint_path = Path(fetch(args.checkpoint))
+    config_path = checkpoint_path / "vega_config.json"
+    if not config_path.is_file():
+        parser.error("--checkpoint must resolve to a vegaml checkpoint containing vega_config.json")
+    with config_path.open(encoding="utf-8") as f:
+        cfg = json.load(f)
+    backbone = backbone_hub_id(cfg.get("backbone_name") or cfg.get("backbone"))
+    if not backbone:
+        parser.error("checkpoint does not declare its trained reader in vega_config.json")
+    checkpoint_name = checkpoint_path.name
 
     # Export reader
-    reader_metadata = {}
-    if not args.skip_reader:
+    reader_metadata_path = output_dir / "reader_metadata.json"
+    if args.skip_reader:
+        if not reader_metadata_path.is_file():
+            parser.error("--skip-reader requires reader_metadata.json in --output-dir")
+        with reader_metadata_path.open(encoding="utf-8") as f:
+            reader_metadata = json.load(f)
+    else:
         reader_metadata = export_reader_to_onnx(
             backbone=backbone,
             output_dir=Path(args.output_dir),
             opset=args.opset,
             quantize=args.quantize,
-            max_seq_len=args.max_seq_len,
+            max_seq_len=args.max_seq_len or cfg.get("max_len", 4096),
+            feature_layers=cfg.get("feature_layers"),
+            option_layers=cfg.get("option_layers"),
         )
 
     # Export engine
-    engine_metadata = {}
-    if not args.skip_engine:
-        checkpoint_path = Path(args.checkpoint) if Path(args.checkpoint).exists() else None
+    engine_metadata_path = output_dir / "engine_metadata.json"
+    if args.skip_engine:
+        if not engine_metadata_path.is_file():
+            parser.error("--skip-engine requires engine_metadata.json in --output-dir")
+        with engine_metadata_path.open(encoding="utf-8") as f:
+            engine_metadata = json.load(f)
+    else:
         engine_metadata = export_engine_to_onnx(
-            checkpoint_dir=checkpoint_path if checkpoint_path else Path(args.output_dir),
+            checkpoint_dir=checkpoint_path,
             output_dir=Path(args.output_dir),
         )
+
+    engine_config = engine_metadata.get("config")
+    reader_max_seq_len = reader_metadata.get("max_seq_len")
+    if not isinstance(engine_config, dict) or not isinstance(reader_max_seq_len, int) or reader_max_seq_len < 1:
+        parser.error("reader and engine metadata must include their current configuration")
+    engine_config["max_len"] = reader_max_seq_len
 
     # Create WASM bundle
     create_wasm_bundle(

@@ -1,19 +1,164 @@
 {
   "version": "1.0",
-  "checkpoint": "vegaml-0.8b",
+  "checkpoint": "4d2050287982ca7a7bb0c22fd19a389f5f94474e",
   "reader": {
     "model_type": "reader",
-    "backbone": "gpt2",
-    "model_type_config": "gpt2",
-    "hidden_size": 768,
-    "num_layers": 12,
-    "vocab_size": 50257,
-    "max_seq_len": 4096,
+    "backbone": "Qwen/Qwen3.5-0.8B",
+    "model_type_config": "qwen3_5",
+    "hidden_size": 1024,
+    "num_layers": 24,
+    "vocab_size": 248320,
+    "max_seq_len": 128,
+    "fixed_sequence_length": 128,
+    "bos_token_id": null,
+    "pad_token_id": 248044,
     "opset": 18,
     "quantized": true,
-    "quantization_type": "int8"
+    "quantization_type": "int4",
+    "feature_layers": [
+      13,
+      19
+    ],
+    "option_layers": [
+      19
+    ],
+    "output_layers": [
+      13,
+      19
+    ]
   },
-  "engine": {},
+  "engine": {
+    "model_type": "engine",
+    "d_model": 1024,
+    "feature_layers": [
+      13,
+      19
+    ],
+    "option_layers": [
+      19
+    ],
+    "config": {
+      "latent_dim": 64,
+      "world_dim": 256,
+      "proj_hidden": 2048,
+      "n_steps": 12,
+      "dt_max": 0.5,
+      "settle_eps": 0.01,
+      "force_max": 20.0,
+      "ssm_state": 32,
+      "dropout": 0.1,
+      "feature_dropout": 0.1,
+      "max_len": 128,
+      "opt_max_tokens": 32,
+      "memory_chunks": 16,
+      "memory_min_tokens": 128,
+      "memory_chunk_tokens": 128,
+      "prefix_min_tokens": 4096,
+      "query_first_max_state": 4096,
+      "model_name": "vega-universal",
+      "backbone": "/kaggle/input/notebooks/nandakishorconvai/vega-universal-prep-online-cpu/bundle/models/Qwen3.5-0.8B",
+      "backbone_name": "Qwen3.5-0.8B",
+      "d_model": 1024,
+      "d_shared": 1024,
+      "port": "port.safetensors",
+      "raw_stats": "stats.npz",
+      "n_layers": 24,
+      "feature_layers": [
+        13,
+        19
+      ],
+      "option_layers": [
+        19
+      ],
+      "template": 0,
+      "calibration": {
+        "mode": "thermal",
+        "theta": [
+          [
+            -0.29120035016297224,
+            -0.3731531449321222,
+            0.5330107764656616,
+            -7.671330548815903e-05,
+            0.3243872125674623
+          ],
+          [
+            -1.6916739607726952,
+            -0.05125826539173068,
+            -0.5436338256972736,
+            4.713039775508315e-06,
+            1.0308039990533053
+          ],
+          [
+            -0.07575551028046755,
+            -0.07752289951234878,
+            -0.01424186180111738,
+            9.241518070247972e-06,
+            6.405732210762678e-06
+          ]
+        ],
+        "theta_scalar": [
+          [
+            -0.2946377256961262,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            -0.19569376421687018,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            -0.1761368204040668,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "features": [
+          "log1p(kinetic)",
+          "log1p(nearest)",
+          "steps_used/n_steps",
+          "log(k)"
+        ],
+        "heldout_calib_nll": {
+          "scalar": 0.48719162598427124,
+          "thermal": 0.4847598300579834
+        },
+        "zero_shot_fit": {
+          "items": 800,
+          "tasks": 6,
+          "weight_per_item": 12.729250000000002,
+          "eval_zs_items_left": 5862
+        },
+        "conformal": {
+          "choice": {
+            "0.1": 0.7439671218155042,
+            "0.05": 0.8030106567493221
+          },
+          "score": {
+            "0.1": 0.8373134440914329,
+            "0.05": 0.9240195090153351
+          },
+          "noul": {
+            "0.1": 0.5706852748985118,
+            "0.05": 0.6863567413691545
+          }
+        },
+        "abstain_threshold": {
+          "0.05": 0.7286011354667876,
+          "0.1": 0.5965102289215198,
+          "0.2": 0.2733664401072741
+        },
+        "default_risk": "0.1",
+        "unbound_threshold": 1.376867651939392
+      }
+    }
+  },
   "pipeline": {
     "steps": [
       {
@@ -44,7 +189,7 @@
     ]
   },
   "files": {
-    "reader": "reader.int8.onnx",
+    "reader": "reader.int4.onnx",
     "engine": "engine.onnx",
     "tokenizer": "tokenizer/"
   }

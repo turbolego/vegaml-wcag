@@ -1,38 +1,44 @@
 {
   "version": 1,
-  "source": "turbolego/vegaml",
-  "chunk_bytes": 21474836,
+  "source": "vegaml",
+  "chunk_bytes": 20971520,
   "variants": {
     "reader": {
-      "label": "GPT-2 Reader (int8)",
-      "onnx": "reader.int8.onnx",
+      "label": "vegaml reader",
+      "onnx": "reader.int4.onnx",
+      "onnx_size": 14147343,
+      "onnx_sha256": "5b7dcb66a7c2446b5420bc4b86f6403e79b428287118f23e2936596be17aed74",
       "data": {
-        "name": "reader.int8.onnx.data",
-        "size": 126284157,
+        "name": "reader.int4.onnx.data",
+        "size": 357079040,
+        "sha256": "e02f328e69a568c4b62ec5f6f34ede22a0a0a08ca2eff385728d29184676f65a",
         "parts": [
-          "chunks/reader.int8.onnx.part.aa",
-          "chunks/reader.int8.onnx.part.ab",
-          "chunks/reader.int8.onnx.part.ac",
-          "chunks/reader.int8.onnx.part.ad",
-          "chunks/reader.int8.onnx.part.ae",
-          "chunks/reader.int8.onnx.part.af"
+          "chunks/reader.int4.onnx.data.part.000",
+          "chunks/reader.int4.onnx.data.part.001",
+          "chunks/reader.int4.onnx.data.part.002",
+          "chunks/reader.int4.onnx.data.part.003",
+          "chunks/reader.int4.onnx.data.part.004",
+          "chunks/reader.int4.onnx.data.part.005",
+          "chunks/reader.int4.onnx.data.part.006",
+          "chunks/reader.int4.onnx.data.part.007",
+          "chunks/reader.int4.onnx.data.part.008",
+          "chunks/reader.int4.onnx.data.part.009",
+          "chunks/reader.int4.onnx.data.part.010",
+          "chunks/reader.int4.onnx.data.part.011",
+          "chunks/reader.int4.onnx.data.part.012",
+          "chunks/reader.int4.onnx.data.part.013",
+          "chunks/reader.int4.onnx.data.part.014",
+          "chunks/reader.int4.onnx.data.part.015",
+          "chunks/reader.int4.onnx.data.part.016",
+          "chunks/reader.int4.onnx.data.part.017"
         ]
-      },
-      "note": "GPT-2 reader, int8 quantized"
+      }
     },
     "engine": {
-      "label": "vega-U Decision Engine",
+      "label": "vega-U decision engine",
       "onnx": "engine.onnx",
-      "data": {
-        "name": "engine.onnx.data",
-        "size": 57589819,
-        "parts": [
-          "chunks/engine.onnx.part.aa",
-          "chunks/engine.onnx.part.ab",
-          "chunks/engine.onnx.part.ac"
-        ]
-      },
-      "note": "vega-U decision engine"
+      "onnx_size": 61823943,
+      "onnx_sha256": "3fe15becc1da4bc35345fe6a30e0e83397e39a9e464b02fa4f82ac63cb5d80e2"
     }
   }
 }

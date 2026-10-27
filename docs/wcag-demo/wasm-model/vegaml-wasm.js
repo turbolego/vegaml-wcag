@@ -1,216 +1,356 @@
-// vegaml WASM Browser Loader — loads chunked ONNX models like LayaWCAG
+import * as ort from "../vendor/ort.min.mjs";
+import { Tokenizer } from "../vendor/tokenizers.min.mjs";
+
+const readerBatchSize = 4;
+
+async function fetchResponse(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+  return response;
+}
+
+async function fetchJSON(url) {
+  return (await fetchResponse(url)).json();
+}
+
+async function fetchBytes(url) {
+  return new Uint8Array(await (await fetchResponse(url)).arrayBuffer());
+}
+
+function sameReader(reader, cfg) {
+  const declared = (cfg.backbone_name || cfg.backbone || "").split("/").pop().toLowerCase();
+  const exported = (reader.backbone || "").split("/").pop().toLowerCase();
+  return declared && exported && declared === exported;
+}
+
+function encode(tokenizer, text) {
+  return Array.from(tokenizer.encode(text, { add_special_tokens: false }).ids);
+}
+
+function buildPrompt(tokenizer, state, question, cfg, reader) {
+  const maxLen = cfg.max_len || reader.max_seq_len || 4096;
+  const bos = Number.isInteger(reader.bos_token_id) ? [reader.bos_token_id] : [];
+  const head = encode(tokenizer, "Observation:\n");
+  const qids = encode(tokenizer, `\n\nMeasurement (boolean): ${question.instructions}\nPossible outcomes:`)
+    .slice(0, 256);
+  const options = [
+    encode(tokenizer, "\n* no - the statement does not hold").slice(0, cfg.opt_max_tokens || 32),
+    encode(tokenizer, "\n* yes - the statement holds").slice(0, cfg.opt_max_tokens || 32),
+  ];
+  const end = encode(tokenizer, "\nOutcome:");
+  let fixed = bos.length + head.length + qids.length + options[0].length + options[1].length + end.length;
+  if (fixed > maxLen - 16) {
+    const per = Math.max(3, Math.floor((maxLen - 16 - bos.length - head.length - end.length -
+      Math.min(qids.length, 64)) / options.length));
+    options[0] = options[0].slice(0, per);
+    options[1] = options[1].slice(0, per);
+    qids.splice(Math.max(8, maxLen - 16 - bos.length - head.length - end.length -
+      options[0].length - options[1].length));
+    fixed = bos.length + head.length + qids.length + options[0].length + options[1].length + end.length;
+  }
+
+  let stateIds = encode(tokenizer, state);
+  const prefixMax = cfg.query_first_max_state || 0;
+  let prefix = [];
+  if (prefixMax && stateIds.length < prefixMax) {
+    prefix = encode(tokenizer, `Question to keep in mind while reading (boolean): ${question.instructions}\n\n`)
+      .slice(0, Math.max(0, Math.min(128, maxLen - fixed)));
+    fixed += prefix.length;
+  }
+  const room = Math.max(0, maxLen - fixed);
+  stateIds = stateIds.slice(0, room);
+
+  const ids = [...bos, ...prefix, ...head];
+  const stateStart = ids.length;
+  ids.push(...stateIds);
+  const spans = { state: stateIds.length ? [stateStart, ids.length] : [bos.length, stateStart] };
+  const questionStart = ids.length;
+  ids.push(...qids);
+  spans.question = [questionStart, ids.length];
+  spans.options = [];
+  for (const option of options) {
+    const start = ids.length;
+    ids.push(...option);
+    spans.options.push([start, ids.length]);
+  }
+  ids.push(...end);
+  spans.last = ids.length - 1;
+  return { ids, spans };
+}
+
+function meanSpan(data, batchIndex, sequenceLength, hiddenSize, start, end) {
+  const result = new Float32Array(hiddenSize);
+  const count = Math.max(1, end - start);
+  const base = batchIndex * sequenceLength * hiddenSize;
+  for (let token = start; token < end; token++) {
+    const offset = base + token * hiddenSize;
+    for (let dim = 0; dim < hiddenSize; dim++) result[dim] += data[offset + dim];
+  }
+  for (let dim = 0; dim < hiddenSize; dim++) result[dim] /= count;
+  return result;
+}
+
+function setVector(target, offset, vector) {
+  target.set(vector, offset);
+}
+
+function probabilityPair(logits, offset, tau) {
+  const no = logits[offset] / tau;
+  const yes = logits[offset + 1] / tau;
+  const max = Math.max(no, yes);
+  const pNo = Math.exp(no - max);
+  const pYes = Math.exp(yes - max);
+  const sum = pNo + pYes;
+  return [pNo / sum, pYes / sum];
+}
 
 export class VegamlWASM {
-    constructor() {
-        this.ort = null;
-        this.readerSession = null;
-        this.engineSession = null;
-        this.tokenizer = null;
-        this.metadata = null;
-        this.manifest = null;
-        this.initialized = false;
+  static async create(options = {}) {
+    const instance = new VegamlWASM(options);
+    await instance.initialize();
+    return instance;
+  }
+
+  constructor({ modelDir = "./wasm-model/" } = {}) {
+    this.modelDir = new URL(modelDir, location.href);
+  }
+
+  async initialize() {
+    const url = (path) => new URL(path, this.modelDir).href;
+    const [metadata, manifest, tokenizerJson, tokenizerConfig] = await Promise.all([
+      fetchJSON(url("metadata.json")),
+      fetchJSON(url("manifest.json")),
+      fetchJSON(url("tokenizer/tokenizer.json")),
+      fetchJSON(url("tokenizer/tokenizer_config.json")),
+    ]);
+    const cfg = metadata.engine?.config;
+    if (!cfg || !metadata.reader?.backbone || !sameReader(metadata.reader, cfg)) {
+      throw new Error("WASM bundle reader and engine do not match; export a bundle from the same vegaml checkpoint");
+    }
+    if (!Array.isArray(cfg.feature_layers) || !Array.isArray(cfg.option_layers) ||
+        !Array.isArray(metadata.reader.output_layers)) {
+      throw new Error("WASM bundle is missing reader layer metadata; export it again with the current vegaml exporter");
+    }
+    if (JSON.stringify(cfg.feature_layers) !== JSON.stringify(metadata.reader.feature_layers) ||
+        JSON.stringify(cfg.option_layers) !== JSON.stringify(metadata.reader.option_layers)) {
+      throw new Error("WASM reader layer taps do not match the trained vegaml checkpoint");
+    }
+    const fixedSequenceLength = metadata.reader.fixed_sequence_length;
+    if (fixedSequenceLength !== undefined &&
+        (!Number.isInteger(fixedSequenceLength) || fixedSequenceLength < 1 ||
+          fixedSequenceLength > metadata.reader.max_seq_len)) {
+      throw new Error("WASM reader has an invalid fixed sequence length");
     }
 
-    static async create(options) {
-        var opts = options || {};
-        var modelDir = (opts.modelDir || './wasm-model/').replace(/\/?$/, '/');
-        var instance = new VegamlWASM();
-        await instance._init(modelDir);
-        return instance;
+    this.metadata = metadata;
+    this.config = cfg;
+    this.tokenizer = new Tokenizer(tokenizerJson, tokenizerConfig);
+    ort.env.wasm.wasmPaths = new URL("../vendor/", import.meta.url).href;
+    ort.env.wasm.numThreads = self.crossOriginIsolated
+      ? Math.min(4, navigator.hardwareConcurrency || 2)
+      : 1;
+
+    const readerVariant = manifest.variants?.reader;
+    const engineVariant = manifest.variants?.engine;
+    if (!readerVariant || !engineVariant) throw new Error("WASM manifest must include reader and engine models");
+    const [readerGraph, readerData, engineGraph, engineData] = await Promise.all([
+      this.loadGraph(readerVariant, url),
+      this.loadExternalData(readerVariant, url),
+      this.loadGraph(engineVariant, url),
+      this.loadExternalData(engineVariant, url),
+    ]);
+    this.readerSession = await this.createSession(readerGraph, readerData);
+    this.engineSession = await this.createSession(engineGraph, engineData);
+    this.initialized = true;
+  }
+
+  async loadAsset(entry, url) {
+    if (!entry) return null;
+    if (!entry.parts?.length) return fetchBytes(url(entry.name));
+    const result = new Uint8Array(entry.size);
+    let offset = 0;
+    for (const part of entry.parts) {
+      const bytes = await fetchBytes(url(part));
+      for (let index = 0; index < bytes.length; index++) bytes[index] ^= 0xFF;
+      if (offset + bytes.length > result.length) throw new Error(`Chunked asset exceeds declared size: ${entry.name}`);
+      result.set(bytes, offset);
+      offset += bytes.length;
     }
+    if (offset !== result.length) {
+      throw new Error(`Chunked asset is incomplete: ${entry.name} (${offset} of ${result.length} bytes)`);
+    }
+    return result;
+  }
 
-    async _init(modelDir) {
-        // Load onnxruntime-web from local vendor file
-        var ort = await import('../vendor/ort.min.mjs');
-        this.ort = ort;
-        this.ort.env.wasm.wasmPaths = new URL('../vendor/', import.meta.url).href;
-        this.ort.env.wasm.numThreads = (typeof self !== 'undefined' && self.crossOriginIsolated)
-            ? Math.min(4, navigator.hardwareConcurrency || 2) : 1;
+  async loadGraph(variant, url) {
+    if (variant.onnx_parts?.length) {
+      return this.loadAsset({
+        name: variant.onnx,
+        size: variant.onnx_size,
+        parts: variant.onnx_parts,
+      }, url);
+    }
+    return fetchBytes(url(variant.onnx));
+  }
 
-        // Load metadata + manifest
-        var [metaResp, manifestResp] = await Promise.all([
-            fetch(modelDir + 'metadata.json'),
-            fetch(modelDir + 'manifest.json')
-        ]);
-        this.metadata = await metaResp.json();
-        this.manifest = await manifestResp.json();
+  async loadExternalData(variant, url) {
+    if (!variant.data) return [];
+    const bytes = await this.loadAsset(variant.data, url);
+    return [{ path: variant.data.name, data: bytes }];
+  }
 
-        // Load tokenizer (single tokenizer.json + config)
-        var [tokJsonResp, tokCfgResp] = await Promise.all([
-            fetch(modelDir + 'tokenizer/tokenizer.json'),
-            fetch(modelDir + 'tokenizer/tokenizer_config.json')
-        ]);
-        var tokJson = await tokJsonResp.json();
-        var tokCfg = await tokCfgResp.json();
-        var { Tokenizer } = await import('../vendor/tokenizers.min.mjs');
-        this.tokenizer = new Tokenizer(tokJson, tokCfg);
+  createSession(graph, externalData) {
+    return ort.InferenceSession.create(graph, {
+      executionProviders: ["wasm"],
+      graphOptimizationLevel: "all",
+      externalData,
+    });
+  }
 
-        // Load reader ONNX (stitched from chunks)
-        var readerBytes = await this._loadModel(modelDir, this.manifest.variants.reader);
-        this.readerSession = await this.ort.InferenceSession.create(readerBytes, {
-            executionProviders: ['wasm'],
-            graphOptimizationLevel: 'all'
+  async readerFeatures(items) {
+    const { feature_layers: featureLayers, option_layers: optionLayers } = this.config;
+    const outputLayers = this.metadata.reader.output_layers;
+    const hiddenSize = this.metadata.reader.hidden_size;
+    const features = new Float32Array(items.length * featureLayers.length * 3 * hiddenSize);
+    const options = new Float32Array(items.length * 2 * optionLayers.length * hiddenSize);
+    const padId = this.metadata.reader.pad_token_id ?? 0;
+    const chunkCount = this.config.memory_chunks || 0;
+    const chunks = new Float32Array(items.length * chunkCount * hiddenSize);
+    const chunkMask = new Uint8Array(items.length * chunkCount);
+
+    for (let begin = 0; begin < items.length; begin += readerBatchSize) {
+      const batch = items.slice(begin, begin + readerBatchSize);
+      const length = this.metadata.reader.fixed_sequence_length ||
+        Math.max(...batch.map((item) => item.ids.length));
+      if (batch.some((item) => item.ids.length > length)) {
+        throw new Error(`Reader prompt exceeds its fixed input length of ${length} tokens`);
+      }
+      const inputIds = new BigInt64Array(batch.length * length).fill(BigInt(padId));
+      const attention = new BigInt64Array(batch.length * length);
+      batch.forEach((item, row) => item.ids.forEach((id, index) => {
+        inputIds[row * length + index] = BigInt(id);
+        attention[row * length + index] = 1n;
+      }));
+      const outputs = await this.readerSession.run({
+        input_ids: new ort.Tensor("int64", inputIds, [batch.length, length]),
+        attention_mask: new ort.Tensor("int64", attention, [batch.length, length]),
+      });
+
+      batch.forEach((item, row) => {
+        const targetRow = begin + row;
+        featureLayers.forEach((layer, layerIndex) => {
+          const data = outputs[`layer_${layer}`]?.data;
+          if (!data) throw new Error(`Reader ONNX output missing feature layer ${layer}`);
+          const base = ((targetRow * featureLayers.length + layerIndex) * 3) * hiddenSize;
+          setVector(features, base, meanSpan(data, row, length, hiddenSize, ...item.spans.state));
+          setVector(features, base + hiddenSize, meanSpan(data, row, length, hiddenSize, ...item.spans.question));
+          setVector(features, base + 2 * hiddenSize, meanSpan(data, row, length, hiddenSize, item.spans.last, item.spans.last + 1));
         });
-
-        // Load engine ONNX (stitched from chunks)
-        var engineBytes = await this._loadModel(modelDir, this.manifest.variants.engine);
-        this.engineSession = await this.ort.InferenceSession.create(engineBytes, {
-            executionProviders: ['wasm'],
-            graphOptimizationLevel: 'all'
-        });
-
-        this.initialized = true;
-        console.log('VegamlWASM initialized: reader + engine sessions ready');
-    }
-
-    async _loadModel(modelDir, variant) {
-        // If chunks are available, stitch them together
-        if (variant.data && variant.data.parts && variant.data.parts.length > 0) {
-            var modelBytes = await this._stitchChunks(modelDir, variant);
-            return modelBytes;
-        }
-
-        // Otherwise fetch the raw ONNX file directly
-        var onnxUrl = modelDir + variant.onnx;
-        var onnxBytes = await fetch(onnxUrl).then(r => r.arrayBuffer());
-        return new Uint8Array(onnxBytes);
-    }
-
-    async _stitchChunks(modelDir, variant) {
-        var parts = variant.data.parts;
-        var chunks = [];
-        var totalSize = 0;
-        for (var i = 0; i < parts.length; i++) {
-            var part = await fetch(modelDir + parts[i]).then(r => r.arrayBuffer());
-            var bytes = new Uint8Array(part);
-            // Chunks are XOR-encoded with 0xFF — decode to original bytes
-            for (var j = 0; j < bytes.length; j++) {
-                bytes[j] = bytes[j] ^ 0xFF;
+        if (chunkCount) {
+          const layer = featureLayers[featureLayers.length - 1];
+          const data = outputs[`layer_${layer}`]?.data;
+          const [stateStart, stateEnd] = item.spans.state;
+          const stateLength = stateEnd - stateStart;
+          const chunkMin = this.config.memory_min_tokens || 2048;
+          if (stateLength >= Math.max(chunkMin, 2)) {
+            const perChunk = this.config.memory_chunk_tokens || 128;
+            const used = Math.max(2, Math.min(chunkCount, Math.floor(stateLength / perChunk)));
+            const counts = new Uint32Array(used);
+            for (let token = 0; token < stateLength; token++) {
+              const chunk = Math.floor(token * used / stateLength);
+              const source = (row * length + stateStart + token) * hiddenSize;
+              const target = ((targetRow * chunkCount + chunk) * hiddenSize);
+              for (let dim = 0; dim < hiddenSize; dim++) chunks[target + dim] += data[source + dim];
+              counts[chunk]++;
             }
-            chunks.push(bytes);
-            totalSize += part.byteLength;
-        }
-        var out = new Uint8Array(totalSize);
-        var o = 0;
-        for (var j = 0; j < chunks.length; j++) {
-            out.set(chunks[j], o);
-            o += chunks[j].length;
-        }
-        console.log('Stitched ' + variant.onnx + ': ' + (totalSize / 1048576).toFixed(1) + ' MB from ' + chunks.length + ' chunks');
-        return out;
-    }
-
-    tokenize(text, maxLen) {
-        var encoding = this.tokenizer.encode(text, {
-            padding: "max_length",
-            truncation: true,
-            max_length: maxLen || 512
-        });
-        return {
-            input_ids: encoding.ids,
-            attention_mask: encoding.attention_mask,
-            n_tokens: encoding.ids.length
-        };
-    }
-
-    async decide(state, questions) {
-        if (!this.initialized) {
-            throw new Error('VegamlWASM not initialized');
-        }
-
-        var html = typeof state === 'string' ? state : JSON.stringify(state);
-        var encoded = this.tokenize(html, 512);
-
-        // Run reader: GPT-2 takes input_ids + attention_mask, outputs hidden_states_0..12
-        var inputIds = new BigInt64Array(encoded.input_ids.map(x => BigInt(x)));
-        var attnMask = new BigInt64Array(encoded.attention_mask.map(x => BigInt(x)));
-        var seqLen = encoded.input_ids.length;
-
-        var readerFeeds = {
-            input_ids: new this.ort.Tensor('int64', inputIds, [1, seqLen]),
-            attention_mask: new this.ort.Tensor('int64', attnMask, [1, seqLen])
-        };
-        var readerOut = await this.readerSession.run(readerFeeds);
-
-        // Extract features from hidden states
-        // GPT-2 has 12 layers → hidden_states_0 (embedding) through hidden_states_12 (final)
-        // Engine expects feature_layers [13, 19] from Qwen3.5 (24 layers)
-        // Substitute: use layer 12 (last GPT-2 layer) for both slots
-        var dModel = 1024; // engine's d_model
-        var numFeatureLayers = 2; // engine expects 2 feature layers
-        var hiddenSize = 768; // GPT-2 hidden size
-
-        // Pool each hidden state: mean over sequence
-        var layer12 = readerOut['hidden_states_12'];
-        var features = new Float32Array(1 * numFeatureLayers * 3 * dModel);
-
-        if (layer12) {
-            var hsData = layer12.data; // shape: [1, seqLen, hiddenSize]
-            for (var d = 0; d < Math.min(hiddenSize, dModel); d++) {
-                var sum = 0;
-                for (var s = 0; s < seqLen; s++) {
-                    sum += hsData[s * hiddenSize + d];
-                }
-                var mean = sum / seqLen;
-                var first = hsData[d];
-                var last = hsData[(seqLen - 1) * hiddenSize + d];
-
-                // Feature layer 0 (substitute for Qwen layer 13)
-                features[0 * 3 * dModel + 0 * dModel + d] = mean;
-                features[0 * 3 * dModel + 1 * dModel + d] = first;
-                features[0 * 3 * dModel + 2 * dModel + d] = last;
-                // Feature layer 1 (substitute for Qwen layer 19)
-                features[1 * 3 * dModel + 0 * dModel + d] = mean;
-                features[1 * 3 * dModel + 1 * dModel + d] = first;
-                features[1 * 3 * dModel + 2 * dModel + d] = last;
+            for (let chunk = 0; chunk < used; chunk++) {
+              const target = (targetRow * chunkCount + chunk) * hiddenSize;
+              for (let dim = 0; dim < hiddenSize; dim++) chunks[target + dim] /= counts[chunk];
+              chunkMask[targetRow * chunkCount + chunk] = 1;
             }
+          }
         }
-
-        // Run engine: feats, opts, opt_mask, qtype, chunks, chunk_mask
-        var optionLayers = 1;
-        var nQuestions = Object.keys(questions).length;
-        var opts = new Float32Array(1 * 1 * optionLayers * dModel); // all zeros
-        var optMask = new Uint8Array([0]);
-        var qtype = new BigInt64Array([0n]);
-
-        // Memory chunks (zero-filled — no long-context history)
-        var memoryChunks = 16;
-        var chunks = new Float32Array(1 * memoryChunks * dModel); // all zeros
-        var chunkMask = new Uint8Array(memoryChunks); // all zeros
-
-        var engineFeeds = {
-            feats: new this.ort.Tensor('float32', features, [1, numFeatureLayers, 3, dModel]),
-            opts: new this.ort.Tensor('float32', opts, [1, 1, optionLayers, dModel]),
-            opt_mask: new this.ort.Tensor('bool', optMask, [1, 1]),
-            qtype: new this.ort.Tensor('int64', qtype, [1]),
-            chunks: new this.ort.Tensor('float32', chunks, [1, memoryChunks, dModel]),
-            chunk_mask: new this.ort.Tensor('bool', chunkMask, [1, memoryChunks])
-        };
-        var engineOut = await this.engineSession.run(engineFeeds);
-        var logits = engineOut.logits ? Array.from(engineOut.logits.data) : [0.5];
-
-        // Map single logit to per-criterion probabilities
-        var answers = {};
-        var criteriaList = Object.keys(questions);
-        var nCrit = criteriaList.length;
-        var baseProb = 1 / (1 + Math.exp(-(logits[0] || 0))); // sigmoid
-        for (var i = 0; i < nCrit; i++) {
-            var crit = criteriaList[i];
-            var prob = Math.max(0, Math.min(1, baseProb + (i - nCrit / 2) * 0.005));
-            answers[crit] = {
-                boolean: prob,
-                confidence: 0.5 + prob * 0.5,
-                abstain: prob < 0.05 || prob > 0.95,
-                unbound: false,
-                prediction_set: prob > 0.5 ? ["violated"] : ["compliant"]
-            };
-        }
-
-        return {
-            answers: answers,
-            latency_ms: 0,
-            mode: "wasm",
-            n_tokens: encoded.n_tokens
-        };
+        optionLayers.forEach((layer, layerIndex) => {
+          const data = outputs[`layer_${layer}`]?.data;
+          if (!data) throw new Error(`Reader ONNX output missing option layer ${layer}`);
+          item.spans.options.forEach((span, optionIndex) => {
+            const base = (((targetRow * 2 + optionIndex) * optionLayers.length + layerIndex) * hiddenSize);
+            setVector(options, base, meanSpan(data, row, length, hiddenSize, ...span));
+          });
+        });
+      });
     }
+
+    return { features, options, chunks, chunkMask };
+  }
+
+  async decide(state, questions) {
+    if (!this.initialized) throw new Error("VegamlWASM not initialized");
+    const start = performance.now();
+    const entries = Object.entries(questions);
+    if (entries.some(([, question]) => question.type !== "boolean")) {
+      throw new Error("The WCAG WASM demo currently supports boolean questions only");
+    }
+    const text = typeof state === "string" ? state : JSON.stringify(state);
+    const prompts = entries.map(([, question]) => buildPrompt(this.tokenizer, text, question, this.config, this.metadata.reader));
+    const { features, options, chunks, chunkMask } = await this.readerFeatures(prompts);
+    const count = entries.length;
+    const hiddenSize = this.metadata.reader.hidden_size;
+    const optionLayers = this.config.option_layers.length;
+    const inputs = {
+      feats: new ort.Tensor("float32", features, [count, this.config.feature_layers.length, 3, hiddenSize]),
+      opts: new ort.Tensor("float32", options, [count, 2, optionLayers, hiddenSize]),
+      opt_mask: new ort.Tensor("bool", new Uint8Array(count * 2).fill(1), [count, 2]),
+      qtype: new ort.Tensor("int64", new BigInt64Array(count).fill(2n), [count]),
+    };
+    if (this.engineSession.inputNames.includes("chunks")) {
+      const chunkCount = this.config.memory_chunks;
+      if (!chunkCount) throw new Error("Engine ONNX requires memory chunks but the checkpoint config omits memory_chunks");
+      inputs.chunks = new ort.Tensor("float32", chunks, [count, chunkCount, hiddenSize]);
+      inputs.chunk_mask = new ort.Tensor("bool", chunkMask, [count, chunkCount]);
+    }
+
+    const output = await this.engineSession.run(inputs);
+    const calibration = this.config.calibration || {};
+    const theta = calibration.theta?.[2] || [0, 0, 0, 0, 0];
+    const risk = String(calibration.default_risk || "0.1");
+    const abstainThreshold = calibration.abstain_threshold?.[risk] || 0;
+    const conformal = calibration.conformal?.boolean || calibration.conformal?.noul || {};
+    const conformalThreshold = conformal["0.1"];
+    const maxSteps = Math.max(1, this.config.n_steps || 1);
+    const answers = {};
+
+    entries.forEach(([criterion], index) => {
+      const kinetic = Math.max(0, Number(output.kinetic.data[index]));
+      const nearest = Math.max(0, Number(output.nearest.data[index]));
+      const steps = Number(output.steps_used.data[index]);
+      const phys = [Math.log1p(kinetic), Math.log1p(nearest), steps / maxSteps, Math.log(2)];
+      const logTau = theta[0] + theta.slice(1).reduce((sum, weight, i) => sum + weight * phys[i], 0);
+      const tau = Math.exp(Math.max(Math.log(0.2), Math.min(Math.log(20), logTau)));
+      const probs = probabilityPair(output.logits.data, index * 2, tau);
+      const confidence = Math.max(...probs);
+      const best = probs[1] > probs[0] ? 1 : 0;
+      const predictionSet = conformalThreshold === undefined
+        ? null
+        : [0, 1].filter((option) => probs[option] >= Math.max(1 - conformalThreshold, 1e-12) || option === best)
+          .map((option) => option === 1);
+      answers[criterion] = {
+        boolean: probs[1],
+        probs: { false: probs[0], true: probs[1] },
+        confidence,
+        prediction_set: predictionSet,
+        abstain: confidence < abstainThreshold,
+        unbound: nearest > (calibration.unbound_threshold ?? Number.POSITIVE_INFINITY),
+        settle_steps: steps,
+        energy: -Math.max(...output.logits.data.slice(index * 2, index * 2 + 2)),
+      };
+    });
+
+    return {
+      answers,
+      latency_ms: Math.round(performance.now() - start),
+      n_tokens: prompts.reduce((total, prompt) => total + prompt.ids.length, 0),
+      mode: "wasm",
+    };
+  }
 }

@@ -1,127 +1,51 @@
-# WCAG 2.2 demo: paste markup, score all 63 criteria with vegaml
+# WCAG 2.2 demo: vegaml
 
-A webpage demo in the spirit of [turbolego/LayaWCAG](https://github.com/turbolego/LayaWCAG)
-(paste HTML → verdict per criterion → ranked probabilities → report JSON), but the brain is
-**vegaml's HTTP API** instead of an in-browser ONNX probe. LayaWCAG runs the whole model in
-the browser; vegaml is a server-side reader (frozen LLM + 14.3M decision engine), so the demo
-is a thin web UI on top of `vegaml-serve`.
+This is the **vegaml-wcag** demo. It evaluates page content with vegaml's own reader and decision engine. It is separate from [LayaWCAG](https://github.com/turbolego/LayaWCAG); the WCAG criteria and page used here are inputs to vegaml, not LayaWCAG's classifier.
 
-## Question sheet
+## Run the demo
 
-`wcag_criteria.json` is the same 63 WCAG 2.2 criteria LayaWCAG ships
-(`LayaWCAG/model/wcag_criteria.json`), rebuilt as vegaml boolean questions:
+The GitHub Pages site is available at <https://turbolego.github.io/vegaml-wcag/wcag-demo/>.
 
-```json
-{ "criterion": "1.1.1", "level": "A",
-  "instructions": "Does this HTML markup fail WCAG 2.2 criterion 1.1.1 (non-text content),
-                   i.e. it is violated because non-text content ... has no alt text? Answer from the markup alone." }
-```
+Choose a backend in the demo:
 
-Each `instructions` string carries the criterion's intent so the zero-shot engine has
-discriminative signal; the criterion id is the question key, so answers line up 1:1 with
-the 63-row table. Regenerate after editing intents with `python3 make_criteria.py`.
+- **Modal (hosted)** sends the page content and selected criteria to the configured hosted vegaml API.
+- **WASM (browser)** runs vegaml's exported reader and engine locally in the browser. It does not call the hosted inference API.
 
-## Run it
+To run the hosted backend locally, install the serving extra and start the model server and demo proxy:
 
-Two modes:
-
-### A. Local (same-origin proxy — no CORS involved)
-
-```bash
+```sh
 pip install "vegaml[serve]"
-
-# 1) the model server (--preload loads before binding, so /health only goes green when ready)
-vegaml-serve --model 0.8b --host 0.0.0.0 --port 8080 --preload &
-
-# 2) this demo: static files + a same-origin /api proxy to the server above
-python3 server.py
-# -> http://127.0.0.1:8090
-```
-
-On `localhost`/`127.0.0.1` the page defaults its API base to `/api` (the proxy).
-
-### B. GitHub Pages (this folder is under `docs/` so Pages can deploy it)
-
-GitHub Pages only serves the repo root or `docs/`, so the demo lives at `docs/wcag-demo/`
-and deploys to `https://turbolego.github.io/vegaml/wcag-demo/` (Pages setting: deploy the
-`docs` folder). The page has no model of its own — it talks to a `vegaml-serve` you run
-locally (or on a machine you can reach), so start the server with CORS:
-
-```bash
 vegaml-serve --model 0.8b --host 0.0.0.0 --port 8080 --preload --cors
 ```
 
-On a non-localhost host the page defaults its API base to `http://127.0.0.1:8080`;
-override with `?apiBase=<url>`. (The demo must remain static: Pages has no server, so the
-reader + engine always run wherever *you* point the page.)
+In another terminal, run `python3 docs/wcag-demo/server.py` from the repository root and open <http://127.0.0.1:8090>. The local proxy forwards `/api` requests to `vegaml-serve`; it avoids browser cross-origin configuration for local development.
 
-In both modes: open the page, click **Check server**, pick an example snippet or paste your
-own markup, set a threshold (default 0.5), click **Analyze**. The page posts one
-`/v1/decide` call with all 63 questions on the pasted state; results render as a violations
-table + a full ranked list + the raw answer JSON, downloadable as `wcag-vegaml-report.json`.
+Paste an HTML snippet or choose an example, set the probability threshold, and analyze it. The page asks the 63 WCAG 2.2 success-criterion questions, shows ranked probabilities, and lets you download a JSON report. Use `?backend=wasm` to open the demo directly in browser/WASM mode.
 
-## Troubleshooting: "Cannot reach server" on the hosted page
+## Question sheet and interpretation
 
-The GitHub Pages page is **HTTPS**; browsers block an HTTPS page from fetching an
-**`http://`** backend (active mixed content). So `?apiBase=http://<any-ip>:8080` will fail
-in the browser even when the server is up and `--cors` is set — the block is policy, not
-connectivity. The options, in order of effort:
+[`wcag_criteria.json`](./wcag_criteria.json) contains the 63 criteria as vegaml boolean questions. Each instruction describes the criterion so the model can evaluate the supplied markup; regenerate the question sheet after editing its source with `python3 docs/wcag-demo/make_criteria.py`.
 
-1. **Local mode (no frictions)** — mode A above: the page and the backend share an origin
-   (`http://127.0.0.1:8090`), so nothing is blocked. This is the default dev workflow.
-2. **Same-machine backend** — run `vegaml-serve ... --cors` on the machine whose browser
-   opens the hosted page and keep the default `http://127.0.0.1:8080`; browsers allow
-   `http://127.0.0.1` from an HTTPS page (potentially-trustworthy origin), unlike remote
-   IPs.
-3. **HTTPS backend on the tailnet** — on the backend box: `sudo tailscale serve --bg 8080`
-   (needs sudo: the serve config is root-gated), then open the hosted page with
-   `?apiBase=https://100.83.145.68` (the tailnet cert is trusted by tailnet clients).
-4. **In-browser ONNX (roadmap)** — like LayaWCAG: no server at all. Needs the 0.8B reader
-   exported to ONNX Runtime Web; `export_engine()` ships the 14.3M engine only.
+The results are model estimates, not deterministic rule checks. They depend on the checkpoint, supplied markup, and threshold. The text-only reader cannot conclusively evaluate criteria requiring computed styles, screenshots, or interaction (including contrast, reflow, and target size). Treat the demo as an aid, not a substitute for axe-core or a full accessibility audit and human review.
 
-## What you get (and what you don't)
+## Building the browser model
 
-- **Zero-shot off the shelf**: no WCAG training data, no fitted head. The probabilities are
-  the vega-U engine's calibrated outputs; `abstain` / `unbound` flags in the raw JSON mark
-  questions the engine considers out of distribution.
-- **Not a substitute for axe-core**: the reader sees markup text only, like LayaWCAG.
-  Contrast (1.4.3/1.4.6), reflow (1.4.10), and target-size (2.5.5) criteria need computed
-  styles/screenshots to be conclusive; vegaml's vision path (Qwen3.5 readers, image state)
-  is where that goes — see `vegaml/_vision.py`.
-- **Calibrate on your own labels** to make the verdicts domain-honest:
-  collect `{"state": "<markup>", "violated": true}` pairs and run `vegaml calibrate`
-  (see `docs/calibration.md`); the server then serves the refit temperature/conformal sets.
+The browser backend requires matching ONNX exports of vegaml's reader and engine, tokenizer assets, and bundle metadata. Regenerate the bundle from the trained checkpoint with the repository exporter:
+
+```sh
+python -m pip install -e '.[onnx]'
+python -m vegaml.wasm_export --checkpoint 0.8b --output-dir docs/wcag-demo/wasm-model --quantize int4 --max-seq-len 128
+```
+
+The export must use a reader trained for the selected engine backbone. The exporter records the reader/engine feature-layer configuration, ports the universal engine using its trained statistics, quantizes the Qwen reader's matrix and embedding weights to int4, and writes chunk manifests for large ONNX external-data files. Keep the demo's ONNX Runtime Web assets alongside the generated `wasm-model` directory.
+
+The checked-in Pages bundle uses vegaml's matching Qwen3.5-0.8B reader and vega-U engine. Its reader graph is fixed to 128 tokens because Qwen3.5's gated-delta attention export is not sequence-dynamic in the browser graph. Short prompts are padded; page text and question prefixes are constrained to the graph's input budget. This is a demo for short HTML fragments, not whole-site scanning. The int4 reader is about 341 MiB (357 MB), with a full bundle of about 432 MiB. In a local CPU-browser run, initial load took about 5 minutes and one 63-criterion scan took about 6.4 minutes; actual times vary by device and browser. WASM mode does not fall back to the hosted service; use Modal for larger inputs or faster scans.
 
 ## Files
 
-| File | What it is |
+| File | Purpose |
 |---|---|
-| `index.html` | the page: server check, paste box, results, raw JSON, report download |
-| `app.js` | the logic: builds the 63-question sheet, calls `/decide`, renders |
-| `server.py` | stdlib-only host: static files + `/api` → `vegaml-serve` proxy (no CORS needed) |
-| `wcag_criteria.json` | 63 criteria as vegaml boolean questions (generated by `make_criteria.py`) |
-| `make_criteria.py` | rebuilds the question sheet from LayaWCAG's criterion list + hand-written intents |
-
-## WASM Export (run locally, not in repo)
-
-The WASM bundle is **not committed** (model files are ~600MB). Generate locally:
-
-```bash
-# Install vegaml with ONNX extras
-pip install "vegaml[onnx]"
-
-# Export reader (GPT-2, int8 quantized) + engine to ONNX
-python -m vegaml.wasm_export --checkpoint 0.8b --output-dir docs/wcag-demo/wasm-model --quantize int8
-
-# Output: docs/wcag-demo/wasm-model/ with reader.int8.onnx, engine.onnx, vegaml-wasm.js, demo.html, metadata.json, tokenizer/
-
-# Open demo.html in browser, or use ?backend=wasm on the hosted page
-```
-
-For production, swap GPT-2 for Qwen3.5-0.8B or Gemma-1B (larger but more accurate). Export with:
-
-```bash
-python -m vegaml.wasm_export --checkpoint 0.8b --output-dir docs/wcag-demo/wasm-model --quantize int8
-```
-
-The WASM bundle runs entirely in-browser via onnxruntime-web (no server needed).
+| `index.html`, `app.js` | Demo UI, backend selection, and results |
+| `server.py` | Local static host and same-origin API proxy |
+| `wcag_criteria.json`, `make_criteria.py` | WCAG question sheet and generator |
+| `wasm-model/` | Browser reader/engine bundle and ONNX Runtime Web assets |

@@ -1,12 +1,26 @@
 {
   "model_type": "reader",
-  "backbone": "gpt2",
-  "model_type_config": "gpt2",
-  "hidden_size": 768,
-  "num_layers": 12,
-  "vocab_size": 50257,
-  "max_seq_len": 4096,
+  "backbone": "Qwen/Qwen3.5-0.8B",
+  "model_type_config": "qwen3_5",
+  "hidden_size": 1024,
+  "num_layers": 24,
+  "vocab_size": 248320,
+  "max_seq_len": 128,
+  "fixed_sequence_length": 128,
+  "bos_token_id": null,
+  "pad_token_id": 248044,
   "opset": 18,
   "quantized": true,
-  "quantization_type": "int8"
+  "quantization_type": "int4",
+  "feature_layers": [
+    13,
+    19
+  ],
+  "option_layers": [
+    19
+  ],
+  "output_layers": [
+    13,
+    19
+  ]
 }

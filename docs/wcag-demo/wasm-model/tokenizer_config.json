@@ -1,11 +1,11 @@
 {
-  "model_type": "gpt2",
-  "vocab_size": 50257,
-  "max_seq_len": 4096,
+  "model_type": "qwen3_5",
+  "vocab_size": 248320,
+  "max_seq_len": 128,
   "padding_side": "right",
   "truncation_side": "right",
-  "pad_token_id": null,
-  "eos_token_id": 50256,
-  "bos_token_id": 50256,
-  "unk_token_id": 50256
+  "pad_token_id": 248044,
+  "eos_token_id": 248046,
+  "bos_token_id": null,
+  "unk_token_id": null
 }
