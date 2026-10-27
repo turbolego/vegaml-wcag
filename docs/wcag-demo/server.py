@@ -14,7 +14,6 @@ import http.server
 import json
 import os
 import pathlib
-import re
 import urllib.request
 
 HERE = pathlib.Path(__file__).parent

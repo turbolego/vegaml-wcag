@@ -18,19 +18,20 @@ Usage:
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager, nullcontext
-import json
 import hashlib
+import json
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from types import MethodType
 from typing import Iterator, Optional
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from ._universal import UniversalEngine
 from .hub import backbone_hub_id, fetch
-from .onnx_export import _load_engine, export_engine as export_engine_internal
+from .onnx_export import _load_engine
+from .onnx_export import export_engine as export_engine_internal
 
 WASM_CHUNK_BYTES = 20 * 1024 * 1024
 WASM_MAX_FILE_BYTES = 95 * 1024 * 1024
@@ -317,7 +318,7 @@ def export_reader_to_onnx(
     if quantize == "int4":
         _quantize_reader_int4(output_dir / "reader.onnx", output_dir / "reader.int4.onnx")
     elif quantize:
-        from onnxruntime.quantization import quantize_dynamic, QuantType
+        from onnxruntime.quantization import QuantType, quantize_dynamic
         quant_path = str(output_dir / "reader.int8.onnx")
         quantize_dynamic(
             str(output_dir / "reader.onnx"),
@@ -560,7 +561,10 @@ def generate_html_demo(metadata: dict) -> str:
     </div>
 
     <div style="margin: 1rem 0;">
-        <label>Threshold: <input type="range" id="threshold" min="0" max="1" step="0.05" value="0.5"> <span id="thVal">0.5</span></label>
+        <label>Threshold:
+            <input type="range" id="threshold" min="0" max="1" step="0.05" value="0.5">
+            <span id="thVal">0.5</span>
+        </label>
     </div>
 
     <button onclick="analyze()">Analyze (63 WCAG criteria)</button>
@@ -603,7 +607,8 @@ def generate_html_demo(metadata: dict) -> str:
                 var results = await window.vegaml.decide(html, buildQuestions());
                 renderResults(results);
             } catch (e) {
-                document.getElementById('results').innerHTML = '<div class="status error">Error: ' + e.message + '</div>';
+                document.getElementById('results').innerHTML =
+                    '<div class="status error">Error: ' + e.message + '</div>';
             }
         }
 
@@ -612,7 +617,10 @@ def generate_html_demo(metadata: dict) -> str:
             var q = {};
             for (var i = 0; i < criteriaList.length; i++) {
                 var c = criteriaList[i];
-                q[c.criterion] = { type: 'boolean', instructions: 'Does this HTML fail WCAG ' + c.criterion + ' (' + c.description + ')?' };
+                q[c.criterion] = {
+                    type: 'boolean',
+                    instructions: 'Does this HTML fail WCAG ' + c.criterion + ' (' + c.description + ')?'
+                };
             }
             return q;
         }
@@ -627,7 +635,9 @@ def generate_html_demo(metadata: dict) -> str:
                 var ans = answers[key];
                 var p = ans.boolean || 0;
                 var isViolation = p >= parseFloat(document.getElementById('threshold').value);
-                html += '<tr style="border-bottom: 1px solid #ddd;"><td style="padding: 0.5rem; font-family: monospace;">' + key + '</td>' +
+                html += '<tr style="border-bottom: 1px solid #ddd;"><td style="padding: 0.5rem; ' +
+                    'font-family: monospace;">' +
+                    key + '</td>' +
                     '<td style="padding: 0.5rem;"></td>' +
                     '<td style="padding: 0.5rem; text-align: right;">' + (p * 100).toFixed(1) + '%</td>' +
                     '<td style="padding: 0.5rem;" class="' + (isViolation ? 'violation' : 'ok') + '">' +
@@ -655,7 +665,11 @@ def main():
     parser.add_argument("--output-dir", required=True, help="Output directory for WASM bundle")
     parser.add_argument("--opset", type=int, default=18, help="ONNX opset version")
     parser.add_argument("--quantize", choices=["int8", "uint8", "int4"], help="Quantize reader model")
-    parser.add_argument("--max-seq-len", type=int, help="Max sequence length (defaults to checkpoint max_len)")
+    parser.add_argument(
+        "--max-seq-len",
+        type=int,
+        help="Max sequence length (defaults to checkpoint max_len)",
+    )
     parser.add_argument("--skip-reader", action="store_true", help="Skip reader export (engine only)")
     parser.add_argument("--skip-engine", action="store_true", help="Skip engine export")
 
@@ -712,7 +726,11 @@ def main():
 
     engine_config = engine_metadata.get("config")
     reader_max_seq_len = reader_metadata.get("max_seq_len")
-    if not isinstance(engine_config, dict) or not isinstance(reader_max_seq_len, int) or reader_max_seq_len < 1:
+    if (
+        not isinstance(engine_config, dict)
+        or not isinstance(reader_max_seq_len, int)
+        or reader_max_seq_len < 1
+    ):
         parser.error("reader and engine metadata must include their current configuration")
     engine_config["max_len"] = reader_max_seq_len
 

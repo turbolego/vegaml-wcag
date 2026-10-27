@@ -80,7 +80,9 @@ def api():
     Also add /model and /decide aliases (without /v1) so the remote demo page
     works without code changes.
     """
+
     from fastapi.middleware.cors import CORSMiddleware
+
     from vegaml.serve import create_app
     model = _load()
     app = create_app(model=model, model_name="0.8b")
@@ -88,7 +90,6 @@ def api():
                        allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
     # Alias /model -> /v1/model, /decide -> /v1/decide for remote demo compatibility
     # FastAPI's router makes this trivial: just add the same handler to the new paths
-    from fastapi import Request
     for route in app.routes:
         if hasattr(route, 'path') and route.path == "/v1/model":
             app.router.add_api_route("/model", route.endpoint, methods=["GET"], include_in_schema=False)
