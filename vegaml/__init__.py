@@ -23,6 +23,12 @@ Two readouts over the same frozen features, chosen with `mode`:
   readout produced it, in ``readout``.
 * ``"both"`` returns both, side by side, which is the only honest way to compare them.
 
+An escalation band is separate from both readouts and sits over either: ``set_band`` (or
+``decide(review_below=...)``) marks every answer "auto" or "review" by its confidence, which
+is the escalation signal that works without labels and without the conformal set coming out
+empty. :func:`vegaml.calibrate.calibrate` fits that line to a precision target when you do
+have labels.
+
 "Worth using" is not "fitted": :meth:`fit` refuses a head whose cross-validated accuracy is at or
 below chance, since such a head has learned nothing and would dress noise up as a sharper answer.
 ``"auto"`` goes further and uses only heads whose cross-validated accuracy beats both chance and
@@ -35,14 +41,15 @@ import os
 import time
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
+from .band import Band
 from .hub import default_token, fetch, reader_dir
 from .ttt import TTTHead
 
 # MODES and label_ids are imported by name from outside this package (the bench adapter, the tests),
 # so they belong in __all__ rather than merely being present as module attributes.
-__all__ = ["load", "Vega", "TTTHead", "fetch", "default_token", "label_ids", "MODES",
-           "attach", "calibrate", "__version__"]
-__version__ = "0.12.4"
+__all__ = ["load", "Vega", "TTTHead", "Band", "fetch", "default_token", "label_ids", "MODES",
+           "attach", "calibrate", "load_policy", "fit_policy", "__version__"]
+__version__ = "0.16.1"
 
 MODES = ("auto", "engine", "ttt", "both")
 
@@ -53,13 +60,15 @@ class Vega:
     `mode` sets the default readout for :meth:`decide`; "auto" unless you change it.
     """
 
-    def __init__(self, engine, mode: str = "auto"):
+    def __init__(self, engine, mode: str = "auto", band: Optional[Band] = None):
         if mode not in MODES:
             raise ValueError("mode must be one of %s, got %r" % (", ".join(MODES), mode))
         self.engine = engine
         self.mode = mode
+        self.band = band
         self.heads: Dict[str, Tuple[TTTHead, Optional[float]]] = {}
         self._vision = None      # the vision tower, loaded on first decide_image()
+        self._audio = None       # the speech transcriber, loaded on first decide_audio()
         self._tokens_read = 0    # prompt tokens features() has read since decide() last reset it
 
     # ------------------------------------------------------------------ loading
@@ -68,12 +77,25 @@ class Vega:
                         device: Optional[str] = None, adapters: str = "auto",
                         mode: str = "auto", revision: Optional[str] = None,
                         token: Union[str, bool, None] = None,
-                        max_len: Optional[int] = None) -> "Vega":
+                        max_len: Optional[int] = None,
+                        quantize: Optional[str] = None,
+                        threads: Optional[int] = None) -> "Vega":
         """Load a checkpoint from the Hub or from a local directory.
 
         `token` is optional. Left as None it picks up `HF_TOKEN` from the environment if one is
         set, which is what makes a private or gated repository load; with nothing set, the public
         checkpoints load anonymously as before. Pass ``token=False`` to ignore the environment.
+
+        `quantize="int8"` loads the reader with dynamic int8 linear layers: a quarter of the weight
+        bytes, for a box that cannot hold the float reader. CPU only, and both what it costs in
+        latency and what it costs in agreement with the float reader are measured rather than
+        assumed; see docs/cpu.md.
+
+        `threads` is the setting that matters on a CPU box, and the right value belongs to the
+        reader. On the shipped Qwen3.5 readers one thread measured 4.9x faster than torch's default
+        of four, with identical answers, because their linear-attention layers run a reference
+        implementation on CPU that does not thread; a plain-transformer reader preferred four on the
+        same box. bench/cpu_path.py sweeps it, docs/cpu.md has our numbers.
         """
         # Imported here, not at module import: torch and transformers are only needed once a
         # checkpoint is actually being loaded.
@@ -90,7 +112,25 @@ class Vega:
         if backbone:
             path = reader_dir(path, backbone)
         return cls(_Engine(path, backbone=backbone, device=device, adapters=adapters,
-                           max_len=max_len), mode=mode)
+                           max_len=max_len, quantize=quantize, threads=threads), mode=mode)
+
+    # ------------------------------------------------------------------ escalation
+    def set_band(self, band) -> "Vega":
+        """Set the review band every :meth:`decide` routes against, or None to clear it.
+
+        Takes a :class:`vegaml.band.Band`, a ``{question_id: threshold}`` mapping, or one number
+        used as the line for every question. The band marks each answer "auto" or "review" by its
+        confidence, which is the only escalation signal that covers a TTT head (those answers carry
+        no conformal set and no abstain flag at all) and the only one that fires on an engine answer
+        whose conformal set cannot be empty.
+        """
+        if band is None or isinstance(band, Band):
+            self.band = band
+        elif isinstance(band, Mapping):
+            self.band = Band.from_thresholds(band)
+        else:
+            self.band = Band(default=float(band))
+        return self
 
     # ------------------------------------------------------------------ reading
     def features(self, state, question: Mapping):
@@ -118,7 +158,7 @@ class Vega:
 
     # ------------------------------------------------------------------ fitting
     def fit(self, examples: Sequence[Tuple], questions: Mapping, folds: int = 5,
-            min_examples: int = 6) -> Dict[str, Dict]:
+            min_examples: int = 6, progress=None) -> Dict[str, Dict]:
         """Fit one TTT head per question from labelled examples.
 
         `examples` is a sequence of ``(state, {question_id: label})``, or
@@ -138,10 +178,17 @@ class Vega:
         nothing, and serving it would dress noise up as a sharper answer. A head that beats chance
         is kept for deliberate ``mode="ttt"``, and ``mode="auto"`` uses it only when its
         cross-validated accuracy also beats the engine's own accuracy on the same examples.
+
+        ``progress`` is called as ``progress(stage, question_id, done, total)`` while the rows are
+        read, where stage is "features" or "engine". It exists because reading the rows is the
+        whole cost and it takes minutes: anything with a progress bar in front of a user needs to
+        know how far along it is, and the alternative is a bar that sits at zero for the longest
+        part of the job.
         """
         report: Dict[str, Dict] = {}
         for qid, q in questions.items():
             X, y, rows = [], [], []
+            wanted = sum(1 for e in examples if qid in e[1])
             for example in examples:
                 state, labels = example[0], example[1]
                 if qid not in labels:
@@ -151,6 +198,8 @@ class Vega:
                 X.append(self.features(state, asked))
                 y.append(str(labels[qid]))
                 rows.append((state, asked))
+                if progress:
+                    progress("features", qid, len(X), wanted)
             if len(X) < min_examples:
                 self.heads.pop(qid, None)
                 report[qid] = {"fitted": False, "examples": len(X),
@@ -185,7 +234,7 @@ class Vega:
             if beats_chance:
                 scored_rows = [rows[i] for i in head.cross_val_rows]
                 scored_y = [y[i] for i in head.cross_val_rows]
-                engine_acc = self._engine_accuracy(qid, scored_rows, scored_y)
+                engine_acc = self._engine_accuracy(qid, scored_rows, scored_y, progress)
                 head.engine_accuracy = engine_acc
             beats_engine = bool(beats_chance and engine_acc is not None and cv > engine_acc)
             if beats_chance is not False:
@@ -211,18 +260,26 @@ class Vega:
                                           % (folds, 2 * folds))
         return report
 
-    def _engine_accuracy(self, qid: str, rows: Sequence[Tuple], y: Sequence[str]) -> float:
+    def _engine_accuracy(self, qid: str, rows: Sequence[Tuple], y: Sequence[str],
+                         progress=None) -> float:
+        """The engine's own accuracy on the rows the head was cross-validated on.
+
+        This is a second read of each of those rows, which is why ``fit`` costs about two reads
+        per labelled example rather than one, and why the progress callback reports it separately.
+        """
         from .evals import _prediction
 
         hit = 0
-        for (state, asked), label in zip(rows, y, strict=True):
+        for i, ((state, asked), label) in enumerate(zip(rows, y, strict=True), 1):
             ans = self.engine.decide(state, {qid: asked})["answers"][qid]
             hit += int(_prediction(ans, asked["type"], label_ids(asked)) == label)
+            if progress:
+                progress("engine", qid, i, len(rows))
         return hit / len(rows)
 
     # ------------------------------------------------------------------ deciding
     def decide(self, state, questions: Mapping, mode: Optional[str] = None, alpha: str = "0.1",
-               views: int = 1) -> Dict:
+               views: int = 1, review_below: Optional[float] = None) -> Dict:
         """Answer every question from one read of the state.
 
         With ``mode="auto"``, the default, each question is answered by its head when it has one
@@ -234,6 +291,9 @@ class Vega:
 
         Every mode returns ``latency_ms``, ``n_tokens`` and ``views``. A head reads the frozen
         backbone too, one pass per question, so its time and tokens are counted with the engine's.
+
+        ``review_below`` is a one-call review band, overriding :meth:`set_band` for this call: every
+        answer whose confidence falls below it comes back ``route="review"``.
         """
         mode = mode or self.mode
         if mode not in MODES:
@@ -253,7 +313,7 @@ class Vega:
             out = self.engine.decide(state, questions, alpha=alpha, views=views)
             if mode == "engine":
                 out["mode"] = "engine"
-                return out
+                return self._banded(out, review_below)
             out["mode"] = "both"
             out["ttt"] = self._ttt_answers(state, questions, skip_missing=True)
         # These used to come only from engine.decide(), so a request answered wholly by heads had
@@ -261,7 +321,12 @@ class Vega:
         out["latency_ms"] = round(1000 * (time.perf_counter() - started), 1)
         out["n_tokens"] = out.get("n_tokens", 0) + self._tokens_read
         out.setdefault("views", 1)          # a head reads the state once
-        return out
+        return self._banded(out, review_below)
+
+    def _banded(self, out: Dict, review_below: Optional[float]) -> Dict:
+        """``out`` routed by the call's band, this instance's band, or not at all."""
+        band = self.band if review_below is None else Band(default=float(review_below))
+        return band.apply(out) if band is not None else out
 
     def _auto(self, state, questions: Mapping, alpha: str, views: int) -> Dict:
         by_head = [qid for qid in questions if self._head_worth_using(qid, questions[qid])]
@@ -375,6 +440,98 @@ class Vega:
                                       device=str(getattr(self.engine, "device", "cpu")))
         return self._vision.decide_text("", questions, **kw)
 
+    # ------------------------------------------------------------------ audio
+    def decide_audio(self, audio, questions: Mapping, asr: Optional[str] = None,
+                     language: Optional[str] = None, sampling_rate: Optional[int] = None,
+                     **kw) -> Dict:
+        """The same typed interface over speech, through a small local transcriber.
+
+        Two honest stages rather than one pretend omni-model: a small speech-recognition
+        checkpoint turns the recording into text, and that text is a state :meth:`decide` already
+        answers. Because the engine sees text, everything the text path has applies unchanged,
+        fitted heads included, which the image path cannot say. The default transcriber is
+        distil-whisper (166M, English); pass `asr="openai/whisper-tiny"` (39M) for multilingual
+        traffic or `asr="UsefulSensors/moonshine-tiny"` (27M) for the smallest front end. It is
+        loaded on first use and reused, so a text-only caller never pays for it.
+
+        `audio` is a path to an audio file, raw file bytes, or a float waveform with
+        `sampling_rate=` said out loud. The response carries `transcript` and `asr`, because a
+        decision made on words the caller never saw cannot be audited: a wrong transcript is the
+        transcriber's error, a wrong answer about a correct transcript is ours.
+        """
+        from ._audio import DEFAULT_ASR, Transcriber, to_waveform
+
+        want = asr or DEFAULT_ASR
+        if self._audio is None or self._audio.model != want:
+            self._audio = Transcriber(want, device=str(getattr(self.engine, "device", "cpu")))
+        transcript = self._audio.transcribe(to_waveform(audio, sampling_rate), language=language)
+        if not transcript:
+            # An empty transcript is silence or noise; answering questions about it would be
+            # answering about the empty string with full confidence. Say what happened instead.
+            raise ValueError("the transcriber heard no speech in that audio; nothing to decide on")
+        out = self.decide(transcript, questions, **kw)
+        out["transcript"] = transcript
+        out["asr"] = self._audio.model
+        return out
+
+    # ------------------------------------------------------------------ video
+    def decide_video(self, video, questions: Mapping, frames: int = 4, asr: Optional[str] = None,
+                     language: Optional[str] = None, **kw) -> Dict:
+        """The same typed interface over a clip: the sound track if it carries speech, frames if not.
+
+        The sound track is pulled out at 16 kHz and, when it is loud enough to hold speech,
+        transcribed through :meth:`decide_audio`; if the transcript holds real words the decision
+        is made on it, so heads and calibration apply as for text. Otherwise ``frames`` evenly
+        spaced frames are tiled into one picture and decided through :meth:`decide_image`, the
+        vision tower's zero-shot readout. ``out["video"]`` says which path ran and why.
+
+        ``video`` is a path or raw file bytes. Decoding needs ``vegaml[video]`` (PyAV); the frames
+        path also needs ``vegaml[vision]``. See :mod:`vegaml._video`.
+        """
+        from . import _video
+
+        started = time.perf_counter()
+        src = _video.as_source(video)
+        info = _video.probe(src)
+        wave = _video.extract_audio(src)
+        out = None
+        detail: Dict = {"duration_s": round(info["duration_s"], 3),
+                        "has_audio": bool(info["has_audio"])}
+        if _video.has_speech(wave):
+            try:
+                heard = self.decide_audio(wave, questions, asr=asr, language=language,
+                                          sampling_rate=_video.TARGET_SR, **kw)
+            except ValueError:
+                heard = None        # the transcriber heard nothing: fall through to frames
+            transcript = (heard or {}).get("transcript") or ""
+            if heard is not None and _video.has_speech(wave, transcript):
+                out = heard
+                detail.update(path="speech", transcript=transcript, asr=heard.get("asr"))
+            elif transcript:
+                detail["transcript_rejected"] = transcript
+        if out is None:
+            if not info.get("has_video", True):
+                raise ValueError("the clip has no video stream and no speech on its sound "
+                                 "track; there is nothing to decide on")
+            sampled, times = _video.sample_frames(src, frames, info["duration_s"])
+            out = self.decide_image(_video.contact_sheet(sampled), questions,
+                                    **{k: v for k, v in kw.items() if k in ("mode", "alpha", "risk")})
+            detail.update(path="frames", frame_times=[round(t, 3) for t in times],
+                          frames=len(sampled))
+        out["modality"] = "video"
+        out["video"] = detail
+        out["latency_ms"] = round(1000 * (time.perf_counter() - started), 1)
+        return out
+
+    # ------------------------------------------------------------------ policies
+    def load_policy(self, path, verify=True):
+        """A trained policy (Embedding Studio's ``.zip`` or a saved folder) installed on this model.
+
+        See :func:`vegaml.policy.load_policy`; this is that call with this model already loaded."""
+        from .policy import load_policy
+
+        return load_policy(path, model=self, verify=verify)
+
     def __repr__(self) -> str:
         return "Vega(mode=%r, heads=%d, max_len=%d)" % (
             self.mode, len(self.heads), self.engine.cfg.get("max_len", 0))
@@ -424,6 +581,30 @@ def load(repo_or_path: Optional[str] = None, **kw) -> Vega:
     Hub repository id or a local path. See :meth:`Vega.from_pretrained` for the other arguments.
     """
     return Vega.from_pretrained(repo_or_path, **kw)
+
+
+def load_policy(path, model: Optional[Vega] = None, verify=True, **load_kw):
+    """Load a trained policy: Embedding Studio's downloaded ``.zip``, or a folder saved by
+    :meth:`vegaml.policy.Policy.save`. Verified before anything is installed, then every
+    :meth:`~vegaml.policy.Policy.decide` routes each answer "auto" or "review" by itself.
+
+        policy = vegaml.load_policy("acme-policy.zip")
+        out = policy.decide("I was charged twice")
+        out["route"]                        # "auto" or "review", for the whole record
+
+    With no ``model`` the reader the policy was trained on is loaded. See :mod:`vegaml.policy`."""
+    from .policy import load_policy as _load_policy
+
+    return _load_policy(path, model=model, verify=verify, **load_kw)
+
+
+def fit_policy(model: Vega, rows, questions: Optional[Mapping] = None, **kw):
+    """Heads, calibration, review band and off-topic limit from your labelled rows, in one call,
+    as a :class:`~vegaml.policy.Policy` you can ``decide`` with and ``save``. ``rows`` may be a
+    path to a ``.csv`` or ``.jsonl``. See :func:`vegaml.policy.fit_policy`."""
+    from .policy import fit_policy as _fit_policy
+
+    return _fit_policy(model, rows, questions, **kw)
 
 
 # vegaml/calibrate.py (the legacy calibration module) shares its name with the calibrate()

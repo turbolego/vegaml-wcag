@@ -37,6 +37,7 @@ from ._common import (
     route_adapters,
     route_per_adapter,
     serialize_state,
+    set_cpu_threads,
     softmax_np,
     thermal_features,
     thermal_tau,
@@ -45,11 +46,15 @@ from ._common import (
 
 class Vega:
     def __init__(self, model_dir, backbone=None, device=None, halt=True, calibration="default", adapters="auto",
-                 perception=None, max_len=None):
+                 perception=None, max_len=None, quantize=None, threads=None):
         """calibration="teacher" loads the teacher-matching calibration of a typed-decisions fine-tune (if present)
         instead of the default one fitted to the correct answers. perception: an already loaded Perception to share.
         max_len: prompt token limit, overriding the trained one (e.g. 65536 to read long records; the engine was
-        trained at its configured length, so accuracy beyond it has to be measured)."""
+        trained at its configured length, so accuracy beyond it has to be measured).
+        quantize="int8": dynamic int8 over the reader's linear layers, CPU only. A quarter of the weight bytes,
+        at a latency and agreement cost measured in docs/cpu.md rather than assumed.
+        threads: torch threads for a CPU decision. One is what we measure fastest, by a lot; left unset the
+        process default stands and a note says so."""
         from safetensors.torch import load_file
         with open(os.path.join(model_dir, "vega_config.json"), encoding="utf-8") as f:
             self.cfg = json.load(f)
@@ -59,6 +64,8 @@ class Vega:
         self.model_dir = model_dir
         self.calibration = calibration
         self.device = resolve_device(device)
+        if self.device.type == "cpu":
+            self.threads = set_cpu_threads(threads)
         # Resolution order, most specific first. cfg["backbone"] is whatever absolute path the
         # training machine used, so it is only usable if it happens to exist here; otherwise fall
         # back to cfg["backbone_name"], the Hub id, which is what makes a downloaded checkpoint
@@ -83,7 +90,8 @@ class Vega:
         else:
             bb = self.cfg["backbone"]
         self.backbone = bb     # the one actually used, so the vision path loads the same weights
-        self.perc = perception or Perception(bb, self.device, self.cfg["feature_layers"], self.cfg["option_layers"])
+        self.perc = perception or Perception(bb, self.device, self.cfg["feature_layers"], self.cfg["option_layers"],
+                                            quantize=quantize)
         assert self.perc.feature_layers == self.cfg["feature_layers"], "backbone depth differs from training"
         self.engine = VegaEngine(self.cfg["d_model"], len(self.cfg["feature_layers"]), len(self.cfg["option_layers"]),
                                   self.cfg)
@@ -186,14 +194,17 @@ class Vega:
         ins = qdef["instructions"] if isinstance(qdef["instructions"], str) else json.dumps(qdef["instructions"])
         return {"t": t, "ins": ins, "crit": crit}
 
-    def _view(self, text, qs, template, orders):
+    def _view(self, text, qs, template, orders, state_ids=None):
         """One reading of the state under one surface form. Returns calibrated probabilities per question in ORIGINAL
         option order, plus the engine output / route / raw logits (in prompt order) for the physics fields."""
+        if state_ids is None:
+            state_ids = self.perc.tok(text, add_special_tokens=False)["input_ids"]
         items = []
         for q, order in zip(qs, orders):
             ids, spans = build_prompt(self.perc.tok, text, q, self.cfg["max_len"], template=template, option_order=order,
                                       opt_max_tokens=self.cfg["opt_max_tokens"],
-                                      query_first_max_state=self.cfg.get("query_first_max_state", 0))
+                                      query_first_max_state=self.cfg.get("query_first_max_state", 0),
+                                      state_ids=state_ids)
             items.append({"ids": np.asarray(ids, dtype=np.int32), "spans": spans})
         C = self.engine.memory_chunks if self.engine.memory is not None else 0
         pm = self.cfg.get("prefix_min_tokens", 4096)
@@ -244,12 +255,15 @@ class Vega:
         n_opt = [len(option_texts(q)) for q in qs]
         ident = [list(range(k)) for k in n_opt]
         text = serialize_state(state)
-        runs = [self._view(text, qs, 0, ident)]
+        st_ids = self.perc.tok(text, add_special_tokens=False)["input_ids"]
+        runs = [self._view(text, qs, 0, ident, state_ids=st_ids)]
         if views >= 2:
             rev = [o[::-1] if q["t"] != "score" else o for q, o in zip(qs, ident)]
-            runs.append(self._view(text, qs, 0, rev))
+            runs.append(self._view(text, qs, 0, rev, state_ids=st_ids))
         if views >= 3:
-            runs.append(self._view(prose_state(state) if not isinstance(state, str) else text, qs, 1, ident))
+            p_text = prose_state(state) if not isinstance(state, str) else text
+            p_ids = st_ids if p_text == text else None
+            runs.append(self._view(p_text, qs, 1, ident, state_ids=p_ids))
         base = runs[0]
         out, route, gates, logits, mask = base["out"], base["route"], base["gates"], base["logits"], base["mask"]
         risk = str(risk) if risk is not None else self.risk

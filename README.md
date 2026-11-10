@@ -4,6 +4,25 @@
 
 # vegaml
 
+> **Cite this work.** M, N.; M, A. From Laya to Vega: Open Non-Autoregressive Decision Models with Calibrated Probabilities. *Preprints* **2026**, 2026110781. [https://doi.org/10.20944/preprints202611.0781.v1](https://doi.org/10.20944/preprints202611.0781.v1)
+
+<details>
+<summary>BibTeX</summary>
+
+```bibtex
+@article{m2026laya_vega,
+  title   = {From Laya to Vega: Open Non-Autoregressive Decision Models with Calibrated Probabilities},
+  author  = {M, N. and M, A.},
+  journal = {Preprints},
+  year    = {2026},
+  pages   = {2026110781},
+  doi     = {10.20944/preprints202611.0781.v1},
+  url     = {https://doi.org/10.20944/preprints202611.0781.v1}
+}
+```
+
+</details>
+
 Typed decisions from a frozen language model and a small physics engine. You give it a **state** and a
 **question whose answer type is fixed in advance**; it returns a value your code can use directly: a
 choice, a 0 to 1 score, or the probability that a statement is true. Each carries a calibrated
@@ -344,6 +363,74 @@ present exactly as on the text path. `decide_image` always runs the engine and m
 measure what the picture contributed, `decide_image_text` answers the same questions through the same
 path with the image withheld.
 
+### Audio
+
+*Added in 0.15.0.*
+
+```python
+answer = v.decide_audio("call.wav",
+    {"act": {"type": "choice", "instructions": "What is the caller asking for?",
+             "criteria": {"refund": "money back", "status": "where is my order",
+                          "cancel": "stop the subscription", "other": "none of these"}}})
+answer["transcript"]   # the words the decision was made about
+```
+
+Speech goes through a small local transcriber and the transcript rides the ordinary text path, so
+everything above applies unchanged: fitted heads, calibration, conformal sets, the escalation band.
+That is the difference from the image path, where pixels bypass the heads. The transcript and the
+checkpoint that produced it come back in the response, because a decision made on words you never
+saw cannot be audited.
+
+The default transcriber is `distil-whisper/distil-small.en` (166M, English), downloaded once and
+loaded on first use, so a text-only caller never pays for it. Name any Hugging Face ASR checkpoint
+instead: `asr="openai/whisper-tiny"` (39M) for multilingual audio with `language="de"` and friends,
+`asr="UsefulSensors/moonshine-tiny"` (27M) for the smallest English front end. Everything runs on
+your machine; no audio leaves the process.
+
+`audio` may be a path, raw audio-file bytes, or a float waveform with `sampling_rate=`. Decoding a
+file needs the extra:
+
+```
+pip install "vegaml[audio]"
+```
+
+### Video
+
+*Added in 0.16.0.*
+
+```python
+answer = v.decide_video("clip.mp4", questions)
+answer["video"]        # {"path": "speech", "transcript": ...} or {"path": "frames", "frame_times": [...]}
+```
+
+A clip is split into what the engine already reads. If its sound track carries speech, the
+transcript goes through the text path, heads and calibration included, exactly as for audio;
+otherwise a few evenly spaced frames are tiled into one picture and go through the image path.
+`answer["video"]` says which path ran. Decoding is PyAV, in process, with no binary on the PATH:
+
+```
+pip install "vegaml[video]"
+```
+
+### Trained policies
+
+*Added in 0.16.0.*
+
+```python
+policy = vegaml.load_policy("acme-policy.zip")     # Embedding Studio's download, verified
+out = policy.decide("I was charged twice")
+out["route"]                                       # "auto" or "review", with a reason per answer
+```
+
+A policy is the heads, the calibration, the review band and the off-topic limit, trained on your
+own rows. Loading one checks every file's SHA-256, the Ed25519 signature Embedding Space puts on
+Studio's exports, and that the reader loaded is the one it was trained on; a changed file, a
+foreign signature or the wrong reader is refused by name. Every answer is then routed `auto` or
+`review` for one of four stated reasons: the record is off-topic, the question is not calibrated,
+the conformal set cannot settle on one option, or the policy's review line. `vegaml.fit_policy`
+trains one from a CSV and `policy.save` writes it; `vegaml-serve --policy` serves one. See
+[docs/policies.md](docs/policies.md).
+
 ### 73,728-token context
 
 `max_len` is 73,728 tokens, and the architecture is built for it rather than merely permitting it:
@@ -446,7 +533,8 @@ Each surface is one extra; none changes the core, and [docs/](docs/index.md) cov
 | Surface | Install | One line |
 | --- | --- | --- |
 | [CLI](docs/cli.md) | ships with `vegaml` | `vegaml "state" --boolean "churn=Threatens to leave?"`, JSONL batches on one load |
-| [HTTP](docs/http-api.md) | `vegaml[serve]` | `vegaml-serve`: POST /v1/decide returns exactly what decide() returns |
+| [HTTP](docs/http-api.md) | `vegaml[serve]` | `vegaml-serve`: POST /v1/decide returns exactly what decide() returns; `--policy` serves a trained policy |
+| [Policies](docs/policies.md) | ships with `vegaml` | `vegaml.load_policy("acme-policy.zip")`: verified, then every answer routed auto or review |
 | [MCP](docs/mcp.md) | `vegaml[mcp]` | `vegaml-mcp-server`: decide() as a tool an agent can gate on |
 | [Structured](docs/structured.md) | `vegaml[structured]` | a pydantic model as the question sheet and the validated answer |
 | [ONNX](docs/onnx.md) | `vegaml[onnx]` | export the engine, run it anywhere onnxruntime does |

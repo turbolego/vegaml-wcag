@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vegaml"
-version = "0.12.4"
-description = "Typed decisions from a frozen language model and a small physics engine: calibrated probabilities, conformal sets, 73k context, images."
+version = "0.16.1"
+description = "Typed decisions from a frozen language model and a small physics engine: calibrated probabilities, conformal sets, 73k context, images, speech."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -30,6 +30,8 @@ dependencies = [
   "safetensors>=0.4",
   "huggingface_hub>=0.30,<3.0",
   "numpy>=1.24",
+  # Verifies the Ed25519 signature on a policy Embedding Studio exports (vegaml.policy).
+  "cryptography>=42",
 ]
 
 [project.optional-dependencies]
@@ -37,6 +39,13 @@ dependencies = [
 # transformers' Qwen3VL processor loads torchvision on the way in and refuses to run without it, so the
 # extra has to carry it; leave the version open and let the resolver match the installed torch.
 vision = ["pillow>=10.0", "torchvision"]
+# The audio path: a small ASR checkpoint runs through transformers (already a core dependency), and
+# soundfile decodes the file; libsndfile 1.1+ reads mp3 as well as wav, flac and ogg. A caller who
+# hands in a raw numpy waveform with sampling_rate= needs none of this extra.
+audio = ["soundfile>=0.12"]
+# `pip install vegaml[video]` decides on a clip: PyAV decodes it in process (ffmpeg's libraries, no
+# binary and no subprocess), Pillow tiles the frames. The frames path also needs the vision extra.
+video = ["av>=12", "pillow>=10.0"]
 dev = ["pytest>=8.0", "ruff>=0.6", 'tomli>=2.0; python_version < "3.11"']
 # `pip install vegaml[serve]` adds the HTTP server (vegaml.serve / the vegaml-serve command).
 serve = ["fastapi>=0.110", "uvicorn>=0.27"]
@@ -55,6 +64,7 @@ vegaml = "vegaml.cli:main"
 vegaml-serve = "vegaml.serve:main"
 vegaml-mcp-server = "vegaml.mcp_server:main"
 vegaml-eval = "vegaml.evals:main"
+vegaml-calibrate = "vegaml.recalibrate:main"
 
 [project.urls]
 Homepage = "https://github.com/NandhaKishorM/vegaml"

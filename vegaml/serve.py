@@ -2,6 +2,8 @@
 
     pip install "vegaml[serve]"
     vegaml-serve --model 4b --port 8000
+    vegaml-serve --calibration calibration.json --threads 1      # fitted probabilities and a band
+    vegaml-serve --policy acme-policy.zip                        # a trained policy, verified first
 
     curl -s localhost:8000/v1/decide -H 'content-type: application/json' -d '{
         "state": "I was billed twice, refund me or I cancel.",
@@ -16,6 +18,21 @@ One checkpoint, one process: requests are serialized around the model with a loc
 decision is a single forward pass measured in tens of milliseconds, and two interleaved ones
 would share mutable per-call state. Scale-out is more processes behind any HTTP balancer,
 not threads in this one.
+
+--calibration points at the file `vegaml-calibrate fit` writes, and then every answer is served
+through it: the temperature, the conformal threshold and the review band that were fitted on the
+caller's own labels, rather than the checkpoint's published defaults. Without it this server
+answers with raw published probabilities and no band, which is not what anyone who went to the
+trouble of labelling data wants deployed. Each answer also carries an `audit` block naming the
+engine, the reader and the calibration version that produced it, because a decision nobody can
+re-run is a decision nobody can defend.
+
+--policy serves a trained policy: Embedding Studio's downloaded .zip or a folder saved by
+`vegaml.policy.Policy.save`. It is verified before the port opens (file hashes, signature, and
+that the loaded reader is the one it was trained on; see :mod:`vegaml.policy`), and the reader it
+was trained on is loaded unless --model names one. Every answer then carries ``route`` ("auto" or
+"review") and ``route_reason``, the response carries the record's ``route``, and ``questions``
+may be left out of a request to ask the policy's own.
 """
 from __future__ import annotations
 
@@ -29,10 +46,14 @@ from pydantic import BaseModel, Field
 
 class DecideRequest(BaseModel):
     state: Any
-    questions: Dict[str, Dict[str, Any]]
+    # Required unless the server holds a policy, whose own questions are then asked.
+    questions: Optional[Dict[str, Dict[str, Any]]] = None
     mode: Optional[Literal["auto", "engine", "ttt", "both"]] = None
     alpha: str = "0.1"
     views: int = Field(1, ge=1, le=3)
+    # Per-call review line, for a caller who wants a band without one being configured on the
+    # server. Overrides the server's band; a loaded calibration's band still applies after it.
+    review_below: Optional[float] = Field(None, ge=0.0, le=1.0)
 
 
 class BatchRequest(BaseModel):
@@ -40,17 +61,29 @@ class BatchRequest(BaseModel):
 
 
 def create_app(model=None, model_name: Optional[str] = None, load_kw: Optional[Dict] = None,
+               calibration=None, band=None, policy=None,
                cors: bool = False, cors_origins: Optional[List[str]] = None) -> FastAPI:
     """The FastAPI app. Pass a loaded model (tests do), or a name and the first request loads it.
+
+    `calibration` is a :class:`vegaml.calibrate.Calibration` applied to every answer; `band` is a
+    :class:`vegaml.band.Band` for a review line without a full calibration. `policy` is a loaded
+    :class:`vegaml.policy.Policy`; it brings its own model and calibration and routes every answer.
 
     cors=True adds CORSMiddleware so a static page hosted on another origin (e.g. the
     GitHub Pages demo) can call the local server directly. Default origins are "*".
     """
+    if policy is not None:
+        model, calibration = policy.model, policy.calibration
     app = FastAPI(title="vegaml", docs_url="/docs")
     app.state.model = model
     app.state.model_name = model_name
     app.state.load_kw = load_kw or {}
+    app.state.calibration = calibration
+    app.state.band = band
+    app.state.policy = policy
     app.state.lock = threading.Lock()
+    # Checked once, on the first request that has both a model and a calibration to compare.
+    app.state.checked = False
 
     if cors:
         from fastapi.middleware.cors import CORSMiddleware
@@ -66,16 +99,65 @@ def create_app(model=None, model_name: Optional[str] = None, load_kw: Optional[D
             if app.state.model is None:
                 import vegaml
                 app.state.model = vegaml.load(app.state.model_name, **app.state.load_kw)
+            if app.state.calibration is not None and not app.state.checked:
+                app.state.checked = True
+                for why in app.state.calibration.mismatches(app.state.model):
+                    # Served anyway, because refusing to start is worse than saying so, but said
+                    # once and loudly: a temperature fitted for another reader is noise.
+                    print("vegaml-serve: this calibration does not match the loaded model (%s)" % why)
         return app.state.model
+
+    def _audit(v) -> Dict:
+        """Who produced this answer: engine, reader, calibration version. One cheap dict."""
+        eng = getattr(v, "engine", v)
+        cfg = getattr(eng, "cfg", {}) or {}
+        cal = app.state.calibration
+        out = {"reader": cfg.get("backbone_name"), "vegaml": _version()}
+        try:
+            out["engine_sha256"] = eng.base_sha256()
+        except Exception:
+            out["engine_sha256"] = None
+        out["calibration_version"] = cal.version() if cal is not None else None
+        out["heads_fitted"] = sorted(getattr(v, "heads", {}))
+        if app.state.policy is not None:
+            out["policy"] = {"source": app.state.policy.source,
+                             "verified": app.state.policy.verified.get("status")}
+        return out
+
+    def _version() -> str:
+        import vegaml
+        return vegaml.__version__
 
     def _decide(req: DecideRequest) -> Dict:
         v = _model()
+        pol = app.state.policy
+        if pol is not None:
+            with app.state.lock:
+                try:
+                    out = pol.decide(req.state, req.questions, review_below=req.review_below,
+                                     alpha=req.alpha, views=req.views)
+                except (ValueError, RuntimeError) as e:
+                    raise HTTPException(status_code=400, detail=str(e)) from e
+            out["audit"] = _audit(v)
+            return out
+        if not req.questions:
+            raise HTTPException(status_code=422, detail="questions is required unless the server "
+                                                        "was started with --policy")
         with app.state.lock:
             try:
-                return v.decide(req.state, req.questions, mode=req.mode, alpha=req.alpha, views=req.views)
+                out = v.decide(req.state, req.questions, mode=req.mode, alpha=req.alpha,
+                               views=req.views, review_below=req.review_below)
             except (ValueError, RuntimeError) as e:
                 # A bad question (unknown type, no fitted head in mode="ttt") is the caller's to fix.
                 raise HTTPException(status_code=400, detail=str(e)) from e
+        # Outside the lock: re-scaling probabilities and comparing them to a threshold touches
+        # nothing the model owns.
+        if app.state.calibration is not None:
+            out = app.state.calibration.apply(out)
+        elif app.state.band is not None and req.review_below is None:
+            out = app.state.band.apply(out)
+        out["audit"] = _audit(v)
+        return out
 
     @app.get("/health")
     def health() -> Dict:
@@ -86,9 +168,28 @@ def create_app(model=None, model_name: Optional[str] = None, load_kw: Optional[D
         v = _model()
         eng = getattr(v, "engine", None)
         cfg = getattr(eng, "cfg", {}) or {}
+        cal = app.state.calibration
         return {"model": app.state.model_name or "default",
                 "backbone": cfg.get("backbone_name"), "max_len": cfg.get("max_len"),
-                "mode": getattr(v, "mode", None), "heads_fitted": len(getattr(v, "heads", {}))}
+                "mode": getattr(v, "mode", None), "heads_fitted": len(getattr(v, "heads", {})),
+                "threads": getattr(eng, "threads", None),
+                "quantized": getattr(getattr(eng, "perc", None), "quantized", None),
+                "calibration": None if cal is None else {
+                    "version": cal.version(), "checksum": cal.checksum(), "alpha": cal.alpha,
+                    "questions": sorted(cal.questions), "provenance": cal.provenance,
+                    "band": None if cal.band is None else {
+                        "default": cal.band.default,
+                        "questions": {q: b.get("threshold") for q, b in cal.band.questions.items()}},
+                },
+                "policy": None if app.state.policy is None else {
+                    "source": app.state.policy.source, "verified": app.state.policy.verified,
+                    "questions": app.state.policy.questions,
+                    "outbound": app.state.policy.thresholds()["outbound"]},
+                "band": None if app.state.band is None else {
+                    "default": app.state.band.default,
+                    "questions": {q: b.get("threshold")
+                                  for q, b in app.state.band.questions.items()}},
+                "audit": _audit(v)}
 
     @app.post("/v1/decide")
     def decide(req: DecideRequest) -> Dict:
@@ -109,6 +210,20 @@ def main(argv: Optional[list] = None) -> int:
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--device", default=None)
     ap.add_argument("--max-len", type=int, default=None)
+    ap.add_argument("--threads", type=int, default=None,
+                    help="torch threads for a CPU decision; see docs/cpu.md for the sweep")
+    ap.add_argument("--quantize", default=None, choices=["int8"],
+                    help="int8 weights for the reader, CPU only (docs/cpu.md)")
+    ap.add_argument("--calibration", default=None, metavar="FILE",
+                    help="a calibration.json from `vegaml-calibrate fit`, applied to every answer")
+    ap.add_argument("--policy", default=None, metavar="ZIP_OR_DIR",
+                    help="a trained policy (Studio's .zip or a saved folder), verified before the "
+                         "port opens; every answer is routed auto or review")
+    ap.add_argument("--unsigned-ok", action="store_true",
+                    help="with --policy: serve an unsigned policy (the default refuses one)")
+    ap.add_argument("--review-below", type=float, default=None, metavar="T",
+                    help="route answers under this confidence to review, when no calibration "
+                         "carries a band of its own")
     ap.add_argument("--preload", action="store_true",
                     help="load the checkpoint before binding the port instead of on the first request")
     ap.add_argument("--cors", action="store_true",
@@ -123,12 +238,50 @@ def main(argv: Optional[list] = None) -> int:
         load_kw["device"] = args.device
     if args.max_len:
         load_kw["max_len"] = args.max_len
-    model = None
-    if args.preload:
+    if args.threads:
+        load_kw["threads"] = args.threads
+    if args.quantize:
+        load_kw["quantize"] = args.quantize
+    # Read before the checkpoint loads: a mistyped path should cost one line, not a model load.
+    calibration = band = None
+    if args.calibration:
+        from .calibrate import Calibration
+        try:
+            calibration = Calibration.load(args.calibration)
+        except OSError as e:
+            raise SystemExit("vegaml-serve: --calibration cannot read %r: %s"
+                             % (args.calibration, e.strerror)) from None
+        except ValueError as e:
+            raise SystemExit("vegaml-serve: --calibration %s" % e) from None
+        print("vegaml-serve: calibration %s over %d question(s)%s"
+              % (calibration.version(), len(calibration.questions),
+                 "" if calibration.band is None else ", with a review band"))
+    if args.review_below is not None:
+        from .band import Band
+        band = Band(default=args.review_below)
+    model = policy = None
+    if args.policy:
+        if calibration is not None:
+            raise SystemExit("vegaml-serve: --policy carries its own calibration; drop --calibration")
+        import vegaml
+
+        from .policy import PolicyError, load_policy
+        if args.model:
+            model = vegaml.load(args.model, **load_kw)
+        try:
+            policy = load_policy(args.policy, model=model,
+                                 verify=True if args.unsigned_ok else "signed", **load_kw)
+        except PolicyError as e:
+            raise SystemExit("vegaml-serve: --policy refused: %s" % e) from None
+        print("vegaml-serve: policy %s, %s, questions %s"
+              % (args.policy, policy.verified.get("signed_by") or policy.verified.get("status"),
+                 ", ".join(policy.questions)))
+    elif args.preload:
         import vegaml
         model = vegaml.load(args.model, **load_kw)
     origins = [o.strip() for o in args.cors_origins.split(",")] if args.cors_origins else None
     app = create_app(model=model, model_name=args.model, load_kw=load_kw,
+                     calibration=calibration, band=band, policy=policy,
                      cors=args.cors, cors_origins=origins)
     uvicorn.run(app, host=args.host, port=args.port)
     return 0
