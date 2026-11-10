@@ -1,0 +1,13 @@
+{
+  "model": "Qwen/Qwen3.5-0.8B",
+  "layer": 23,
+  "width": 256,
+  "lambda": 0.3,
+  "dose": 0.1,
+  "val_acc": 0.7,
+  "test_acc": 0.95,
+  "baseline_acc": 0.95,
+  "n_fit": 300,
+  "n_val": 40,
+  "n_test": 20
+}

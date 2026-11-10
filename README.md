@@ -758,6 +758,16 @@ the lowest-energy well, and the residual kinetic energy at the end is what sets 
 is the part that makes the probabilities mean something. CWMI reports accuracy; it has no calibration,
 conformal or abstain machinery, which is most of what is claimed here.
 
+## WCAG Skill Embedded Model
+
+A closed-form skill embedding of WCAG 2.2 decision questions into Qwen3.5-0.8B is available in this repository.
+
+- **Model dir**: `models/wcag-embed-v1/out_wcag/`
+- **Hugging Face**: https://huggingface.co/Turbolego/vegaml-wcag-embed-v1
+- **Demo (WASM)**: https://turbolego.github.io/vegaml-wcag/wcag-demo/?backend=wasm
+
+The base Qwen3.5-0.8B already achieves 95% test accuracy on the 63 WCAG questions; the embedding pipeline is documented in `EMBED_RESULTS_v1.md` / `EMBED_RESULTS_v2.md`. See `docs/wcag-demo/` for the browser WASM demo.
+
 ## Security
 
 A checkpoint is data from a third party, so the inference code lives in this package and is reviewed
