@@ -43,3 +43,9 @@ The blog post's method assumes the base model does NOT know the skill. For WCAG 
 - Model saved at `/kaggle/working/out_wcag/` (edit_metadata.json has full metrics)
 - Notebook: `notebooks/embed_wcag_skill.ipynb` v12
 - Pushed to: `turbolego/vegaml-wcag` main branch
+
+## Model Artifact Verified (2026-11-10 15:25 UTC)
+
+- **File:** `models/wcag-embed-v1/out_wcag/model.safetensors` (1.5 GB, 320 tensors, BF16)
+- **Edited tensor:** `model.language_model.layers.23.mlp.down_proj.weight` shape=[1024, 3584] — contains the closed-form dW edit (lambda=0.3, dose=0.1)
+- All tokenizer/config files present and valid
