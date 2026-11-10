@@ -780,3 +780,11 @@ pickle. Tests enforce that allow-list, and CI fails on any `pickle`, `torch.load
 ## Licence
 
 Apache 2.0.
+
+## References
+
+- [Qwen3.5-0.8B](https://huggingface.co/Qwen/Qwen3.5-0.8B)
+- [WCAG Skill Repo](https://github.com/turbolego/wcag-skill)
+- [WCAG Skill on ClawHub](https://clawhub.ai/turbolego/skills/wcag-skill)
+- [Decision Skill Blog](https://www.embedding.in/blog/a-decision-skill-written-into-the-weights)
+- [Fast Edits Decision Model](https://www.kaggle.com/code/nandakishorconvai/fast-edits-decsion-model)
