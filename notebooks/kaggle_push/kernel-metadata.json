@@ -1,0 +1,16 @@
+{
+  "id": "hummern/embed-wcag-skill",
+  "title": "Embed WCAG Skill",
+  "code_file": "embed_wcag_skill.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "machine_shape": "",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
