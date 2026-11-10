@@ -1,0 +1,861 @@
+request,tool,ready
+"HTML snippet: <img src=""chart.png"" alt="""">",none,true
+"HTML snippet: <img src=""chart.png"" alt=""Quarterly revenue chart showing 20% growth"">",none,true
+"HTML snippet: <audio src=""speech.mp3""></audio>",none,true
+"HTML snippet: <audio src=""speech.mp3""><track kind=""captions"" src=""speech.vtt""></audio>",none,true
+"HTML snippet: <video src=""demo.mp4""></video>",none,true
+"HTML snippet: <video src=""demo.mp4""><track kind=""captions"" src=""demo.vtt"" srclang=""en""></video>",none,true
+"HTML snippet: <video src=""movie.mp4""></video>",none,true
+"HTML snippet: <video src=""movie.mp4""><track kind=""descriptions"" src=""movie.vtt""></video>",none,true
+"HTML snippet: <video src=""live.mp4""></video>",none,true
+"HTML snippet: <video src=""live.mp4""><track kind=""captions"" src=""live.vtt""></video>",none,true
+"HTML snippet: <video src=""movie.mp4""></video>",none,true
+"HTML snippet: <video src=""movie.mp4""><track kind=""descriptions"" src=""movie.vtt""></video>",none,true
+"HTML snippet: <table><tr><td>Name</td><td>Age</td></tr><tr><td>John</td><td>25</td></tr></table>",none,true
+"HTML snippet: <table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>",none,true
+"HTML snippet: <div style=""float:right"">Sidebar</div><div>Main</div>",none,true
+"HTML snippet: <div>Main</div><div style=""float:right"">Sidebar</div>",none,true
+"HTML snippet: <p>Click the <span style=""color:red"">red</span> button</p>",none,true
+"HTML snippet: <p>Click the <button aria-label=""Submit"">Submit</button> button</p>",none,true
+"HTML snippet: <div style=""width:1200px"">Fixed width</div>",none,true
+"HTML snippet: <div style=""max-width:1200px; width:100%"">Responsive</div>",none,true
+"HTML snippet: <input autocomplete=""off"">",none,true
+"HTML snippet: <input autocomplete=""email"">",none,true
+"HTML snippet: <p style=""color:red"">Error: Required field</p>",none,true
+"HTML snippet: <p style=""color:red""><span class=""sr-only"">Error:</span> Required field</p>",none,true
+"HTML snippet: <audio autoplay><source src=""music.mp3""></audio>",none,true
+"HTML snippet: <audio controls><source src=""music.mp3""></audio>",none,true
+"HTML snippet: <p style=""color: #999; background: #fff;"">Low contrast text</p>",none,true
+"HTML snippet: <p style=""color: #333; background: #fff;"">Sufficient contrast text</p>",none,true
+"HTML snippet: <p style=""font-size: 10px;"">Tiny text</p>",none,true
+"HTML snippet: <p style=""font-size: 16px;"">Readable text</p>",none,true
+"HTML snippet: <img src=""text.png"" alt=""Text as image"">",none,true
+"HTML snippet: <p>Real text instead</p>",none,true
+"HTML snippet: <div style=""width:400px; overflow:hidden"">Content</div>",none,true
+"HTML snippet: <div style=""width:100%; overflow:auto"">Content</div>",none,true
+"HTML snippet: <svg><path stroke=""#ccc"" stroke-width=""1"" d=""M0 0 L10 10""/></svg>",none,true
+"HTML snippet: <svg><path stroke=""#333"" stroke-width=""2"" d=""M0 0 L10 10""/></svg>",none,true
+"HTML snippet: <div title=""Tooltip"">Hover me</div>",none,true
+"HTML snippet: <div aria-describedby=""tip"">Hover me</div><div id=""tip"" role=""tooltip"">Tooltip</div>",none,true
+"HTML snippet: <div onmouseover=""show()"">Hover</div>",none,true
+"HTML snippet: <button onmouseover=""show()"" onfocus=""show()"">Hover</button>",none,true
+"HTML snippet: <div onclick=""submit()"" tabindex=""0"">Click me</div>",none,true
+"HTML snippet: <button onclick=""submit()"">Click me</button>",none,true
+"HTML snippet: <div onkeydown=""trap()"" tabindex=""0"">Trap</div>",none,true
+"HTML snippet: <button>Esc to close</button>",none,true
+"HTML snippet: <a href=""#skip"">Skip</a><nav>...</nav>",none,true
+"HTML snippet: <a href=""#main"">Skip to main</a><nav>...</nav><main id=""main"">",none,true
+"HTML snippet: <meta http-equiv=""refresh"" content=""30"">",none,true
+"HTML snippet: <!-- No auto-refresh -->",none,true
+"HTML snippet: <marquee>Scrolling</marquee>",none,true
+"HTML snippet: <div>Static text</div>",none,true
+"HTML snippet: <video><source src=""flash.mp4""></video>",none,true
+"HTML snippet: <video><source src=""safe.mp4""></video>",none,true
+"HTML snippet: <div>Content</div>",none,true
+"HTML snippet: <a href=""#main"">Skip</a><main id=""main"">Content</main>",none,true
+"HTML snippet: <html><body>Page</body></html>",none,true
+"HTML snippet: <html><head><title>Page Title</title></head><body>Page</body></html>",none,true
+"HTML snippet: <div tabindex=""0"">Tab 1</div><div tabindex=""0"">Tab 2</div><button>Button 1</button>",none,true
+"HTML snippet: <button>Tab 1</button><button>Tab 2</button><button>Button 1</button>",none,true
+"HTML snippet: <a href=""/page"">Click here</a>",none,true
+"HTML snippet: <a href=""/page"">View pricing details</a>",none,true
+"HTML snippet: <a href=""/1"">Link</a><a href=""/2"">Link</a>",none,true
+"HTML snippet: <a href=""/1"">Home</a><a href=""/2"">About</a>",none,true
+"HTML snippet: <h2>Section</h2><p>Content</p>",none,true
+"HTML snippet: <h2>Pricing Plans</h2><p>Content</p>",none,true
+"HTML snippet: <div ondrag=""move()""></div>",none,true
+"HTML snippet: <button onclick=""move()"">Move</button>",none,true
+"HTML snippet: <div onclick=""submit()"">Submit</div>",none,true
+"HTML snippet: <button onclick=""submit()"" onmouseup=""confirm()"">Submit</button>",none,true
+"HTML snippet: <button aria-label=""X"">Close</button>",none,true
+"HTML snippet: <button aria-label=""Close"">Close</button>",none,true
+"HTML snippet: <div onmousemove=""action()"">Hover</div>",none,true
+"HTML snippet: <button onclick=""action()"">Action</button>",none,true
+"HTML snippet: <a style=""padding:2px"">Link</a>",none,true
+"HTML snippet: <a style=""padding:12px"">Link</a>",none,true
+"HTML snippet: <html><body>Welcome</body></html>",none,true
+"HTML snippet: <html lang=""en""><body>Welcome</body></html>",none,true
+"HTML snippet: <p lang=""en"">Hello <span>Hola</span></p>",none,true
+"HTML snippet: <p lang=""en"">Hello <span lang=""es"">Hola</span></p>",none,true
+"HTML snippet: <select onchange=""window.location=this.value""><option>Page 1</option></select>",none,true
+"HTML snippet: <select><option>Page 1</option></select><button onclick=""navigate()"">Go</button>",none,true
+"HTML snippet: <input onchange=""submit()"">",none,true
+"HTML snippet: <input><button>Submit</button>",none,true
+"HTML snippet: <nav><a>Home</a></nav><nav><a>Home</a></nav>",none,true
+"HTML snippet: <nav><a>Home</a></nav>",none,true
+"HTML snippet: <button aria-label=""Search"">Search</button><button aria-label=""Search"">Search</button>",none,true
+"HTML snippet: <button aria-label=""Search"">Search</button>",none,true
+"HTML snippet: <form><input required></form>",none,true
+"HTML snippet: <form><input required aria-describedby=""err""></form><div id=""err"">Required</div>",none,true
+"HTML snippet: <form><input type=""text"" name=""email""></form>",none,true
+"HTML snippet: <form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>",none,true
+"HTML snippet: <p>Error: invalid</p>",none,true
+"HTML snippet: <p>Error: email format invalid. Use name@domain.com</p>",none,true
+"HTML snippet: <form action=""/pay""><input></form>",none,true
+"HTML snippet: <form action=""/pay""><input></form><p>Review before submitting</p>",none,true
+"HTML snippet: <div id=""x"" id=""y"">Duplicate ID</div>",none,true
+"HTML snippet: <div id=""x"">Unique ID</div>",none,true
+"HTML snippet: <div role=""checkbox"" aria-checked=""false"">Check me</div>",none,true
+"HTML snippet: <input type=""checkbox"" role=""checkbox"" aria-checked=""false"">Check me</input>",none,true
+"HTML snippet: <div aria-live=""polite""></div>",none,true
+"HTML snippet: <div aria-live=""polite"" aria-atomic=""true""></div>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome</h1>
+<img src=""banner.jpg"" alt="""">
+<p style=""color: #999;"">Low contrast paragraph</p>
+<form><input type=""text"" name=""email""></form>
+<table><tr><td>Name</td><td>Age</td></tr></table>
+<video src=""video.mp4""></video>
+<div onclick=""submit()"" tabindex=""0"">Fake button</div>
+<a href=""/link"">Click here</a>
+</main>
+</body>
+</html>",none,true
+"HTML snippet: <!DOCTYPE html>
+<html lang=""en"">
+<head><title>Test Page</title></head>
+<body>
+<header>
+<nav><a href=""/"">Home</a><a href=""/about"">About</a></nav>
+</header>
+<main>
+<h1>Welcome to Our Site</h1>
+<img src=""banner.jpg"" alt=""Welcome banner showing our team"">
+<p style=""color: #333;"">Normal contrast paragraph</p>
+<form><label for=""email"">Email</label><input type=""email"" id=""email"" name=""email""></form>
+<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>
+<video src=""video.mp4""><track kind=""captions"" src=""video.vtt"" srclang=""en""></video>
+<button onclick=""submit()"">Real button</button>
+<a href=""/link"">View our services</a>
+</main>
+</body>
+</html>",none,true

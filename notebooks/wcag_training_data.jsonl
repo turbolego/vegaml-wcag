@@ -1,0 +1,300 @@
+{"state": "<p lang='en'>Hello <span>Hola</span></p>", "gold": {"wcag_violation": true}, "criterion": "3.1.2", "index": 0}
+{"state": "<p>Click the red button</p>", "gold": {"wcag_violation": true}, "criterion": "1.3.3", "index": 1}
+{"state": "<button aria-label='Search'>Search</button>", "gold": {"wcag_violation": false}, "criterion": "3.2.4", "index": 2}
+{"state": "<a style='padding:2px'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.5.5", "index": 3}
+{"state": "<div onclick='submit()' tabindex='0'>Fake button</div>", "gold": {"wcag_violation": true}, "criterion": "2.1.1", "index": 4}
+{"state": "<button aria-label='X'>Close</button>", "gold": {"wcag_violation": true}, "criterion": "2.5.3", "index": 5}
+{"state": "<div style='float:right'>Sidebar</div><div>Main</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.2", "index": 6}
+{"state": "<img src='chart.png' alt='Revenue chart'>", "gold": {"wcag_violation": false}, "criterion": "1.1.1", "index": 7}
+{"state": "<form><input required></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.1", "index": 8}
+{"state": "<div role='checkbox' aria-checked='false'>Check</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.2", "index": 9}
+{"state": "<a href='/page'>Click here</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.4", "index": 10}
+{"state": "<svg><path stroke='#333' stroke-width='2' d='M0 0 L10 10'/></svg>", "gold": {"wcag_violation": false}, "criterion": "1.4.11", "index": 11}
+{"state": "<table><thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>John</td><td>25</td></tr></tbody></table>", "gold": {"wcag_violation": false}, "criterion": "1.3.1", "index": 12}
+{"state": "<div onmouseover='show()'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.13", "index": 13}
+{"state": "<p lang='en'>Hello <span>Hola</span></p>", "gold": {"wcag_violation": true}, "criterion": "3.1.2", "index": 14}
+{"state": "<div onmousemove='action()'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "2.5.4", "index": 15}
+{"state": "<div><span>Label</span>Value</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.1", "index": 16}
+{"state": "<button onclick='submit()'>Real button</button>", "gold": {"wcag_violation": false}, "criterion": "2.1.1", "index": 17}
+{"state": "<div onmouseover='show()'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.13", "index": 18}
+{"state": "<audio src='speech.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.2.1", "index": 19}
+{"state": "<nav><a>Home</a></nav><nav><a>Home</a></nav>", "gold": {"wcag_violation": true}, "criterion": "3.2.3", "index": 20}
+{"state": "<div ondrag='drag()'></div>", "gold": {"wcag_violation": true}, "criterion": "2.5.7", "index": 21}
+{"state": "<audio src='speech.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.2.1", "index": 22}
+{"state": "<p lang='en'>Hello <span>Hola</span></p>", "gold": {"wcag_violation": true}, "criterion": "3.1.2", "index": 23}
+{"state": "<button aria-label='Search'>Search</button><button aria-label='Search'>Search</button>", "gold": {"wcag_violation": true}, "criterion": "3.2.4", "index": 24}
+{"state": "<div>Main</div><div style='float:right'>Sidebar</div>", "gold": {"wcag_violation": false}, "criterion": "1.3.2", "index": 25}
+{"state": "<div onkeydown='trap()' tabindex='0'>Trap</div>", "gold": {"wcag_violation": true}, "criterion": "2.1.2", "index": 26}
+{"state": "<button onclick='action()'>Action</button>", "gold": {"wcag_violation": false}, "criterion": "2.5.4", "index": 27}
+{"state": "<video src='movie.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.5", "index": 28}
+{"state": "<input onchange='submit()'>", "gold": {"wcag_violation": true}, "criterion": "3.2.2", "index": 29}
+{"state": "<input required>", "gold": {"wcag_violation": true}, "criterion": "3.3.2", "index": 30}
+{"state": "<div id='x' id='y'>Dup</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.1", "index": 31}
+{"state": "<div title='Tooltip'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.12", "index": 32}
+{"state": "<a href='/1'>Link</a><a href='/2'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.5", "index": 33}
+{"state": "<html><body>Page</body></html>", "gold": {"wcag_violation": true}, "criterion": "3.1.1", "index": 34}
+{"state": "<button aria-label='Search'>Search</button><button aria-label='Search'>Search</button>", "gold": {"wcag_violation": true}, "criterion": "3.2.4", "index": 35}
+{"state": "<div onmouseover='show()'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.13", "index": 36}
+{"state": "<div ondrag='move()'></div>", "gold": {"wcag_violation": true}, "criterion": "2.5.1", "index": 37}
+{"state": "<button aria-label='Search'>Search</button>", "gold": {"wcag_violation": false}, "criterion": "3.2.4", "index": 38}
+{"state": "<input onchange='submit()'>", "gold": {"wcag_violation": true}, "criterion": "3.2.2", "index": 39}
+{"state": "<meta http-equiv='refresh' content='30'>", "gold": {"wcag_violation": true}, "criterion": "2.2.1", "index": 40}
+{"state": "<form action='/pay'><input></form><p>Review before submitting</p>", "gold": {"wcag_violation": false}, "criterion": "3.3.4", "index": 41}
+{"state": "<a href='/1'>Home</a><a href='/2'>About</a>", "gold": {"wcag_violation": false}, "criterion": "2.4.5", "index": 42}
+{"state": "<p lang='en'>Hello <span>Hola</span></p>", "gold": {"wcag_violation": true}, "criterion": "3.1.2", "index": 43}
+{"state": "<div role='checkbox' aria-checked='false'>Check</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.2", "index": 44}
+{"state": "<button onclick='submit()' onmouseup='confirm()'>Submit</button>", "gold": {"wcag_violation": false}, "criterion": "2.5.2", "index": 45}
+{"state": "<div ondrag='drag()'></div>", "gold": {"wcag_violation": true}, "criterion": "2.5.7", "index": 46}
+{"state": "<div lang='en'>Welcome</div>", "gold": {"wcag_violation": false}, "criterion": "3.1.1", "index": 47}
+{"state": "<p>Click the red button</p>", "gold": {"wcag_violation": true}, "criterion": "1.3.3", "index": 48}
+{"state": "<button onclick='submit()'>Real button</button>", "gold": {"wcag_violation": false}, "criterion": "2.1.1", "index": 49}
+{"state": "<div aria-live='polite'></div>", "gold": {"wcag_violation": true}, "criterion": "4.1.3", "index": 50}
+{"state": "<form><input name='email' type='email'></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.2", "index": 51}
+{"state": "<div style='width:1200px'>Fixed</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.4", "index": 52}
+{"state": "<video src='movie.mp4'><track kind='descriptions' src='movie.vtt'></video>", "gold": {"wcag_violation": false}, "criterion": "1.2.5", "index": 53}
+{"state": "<p>Error: invalid</p>", "gold": {"wcag_violation": true}, "criterion": "3.3.3", "index": 54}
+{"state": "<div>Static text</div>", "gold": {"wcag_violation": false}, "criterion": "2.2.2", "index": 55}
+{"state": "<html><body>Page</body></html>", "gold": {"wcag_violation": true}, "criterion": "3.1.1", "index": 56}
+{"state": "<div style='width:400px;overflow:hidden'>Content</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.10", "index": 57}
+{"state": "<a style='padding:2px'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.5.5", "index": 58}
+{"state": "<p>Error: invalid</p>", "gold": {"wcag_violation": true}, "criterion": "3.3.3", "index": 59}
+{"state": "<p style='font-size:16px'>Readable text</p>", "gold": {"wcag_violation": false}, "criterion": "1.4.4", "index": 60}
+{"state": "<p style='font-size:10px'>Tiny text</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.4", "index": 61}
+{"state": "<nav><a>Home</a></nav><nav><a>Home</a></nav>", "gold": {"wcag_violation": true}, "criterion": "3.2.3", "index": 62}
+{"state": "<form action='/pay'><input></form><p>Review before submitting</p>", "gold": {"wcag_violation": false}, "criterion": "3.3.4", "index": 63}
+{"state": "<p>Click the <button aria-label='Submit'>Submit</button> button</p>", "gold": {"wcag_violation": false}, "criterion": "1.3.3", "index": 64}
+{"state": "<video src='live.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.4", "index": 65}
+{"state": "<svg><path stroke='#ccc' stroke-width='1' d='M0 0 L10 10'/></svg>", "gold": {"wcag_violation": true}, "criterion": "1.4.11", "index": 66}
+{"state": "<form action='/pay'><input></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.4", "index": 67}
+{"state": "<span style='color:#aaa'>Light text</span>", "gold": {"wcag_violation": true}, "criterion": "1.4.3", "index": 68}
+{"state": "<a href='/page'>Click here</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.4", "index": 69}
+{"state": "<div onclick='submit()'>Submit</div>", "gold": {"wcag_violation": true}, "criterion": "2.5.2", "index": 70}
+{"state": "<video src='movie.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.3", "index": 71}
+{"state": "<p style='font-size:10px'>Tiny text</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.4", "index": 72}
+{"state": "<p style='color:#666;background:#fff'>Low contrast</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.3", "index": 73}
+{"state": "<button onclick='submit()'>Real button</button>", "gold": {"wcag_violation": false}, "criterion": "2.1.1", "index": 74}
+{"state": "<audio src='speech.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.2.1", "index": 75}
+{"state": "<video src='movie.mp4'><track kind='descriptions' src='movie.vtt'></video>", "gold": {"wcag_violation": false}, "criterion": "1.2.5", "index": 76}
+{"state": "<audio src='speech.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.2.1", "index": 77}
+{"state": "<div style='max-width:1200px;width:100%'>Responsive</div>", "gold": {"wcag_violation": false}, "criterion": "1.3.4", "index": 78}
+{"state": "<p style='color:red'>Error</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.1", "index": 79}
+{"state": "<div role='checkbox' aria-checked='false'>Check</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.2", "index": 80}
+{"state": "<p style='color:#666;background:#fff'>Low contrast</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.3", "index": 81}
+{"state": "<div id='x' id='y'>Dup</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.1", "index": 82}
+{"state": "<a style='padding:2px'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.5.5", "index": 83}
+{"state": "<p style='color:#000;background:#fff'>Good contrast</p>", "gold": {"wcag_violation": false}, "criterion": "1.4.3", "index": 84}
+{"state": "<video src='movie.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.3", "index": 85}
+{"state": "<button aria-label='Search'>Search</button>", "gold": {"wcag_violation": false}, "criterion": "3.2.4", "index": 86}
+{"state": "<html lang='en'><body>Page</body></html>", "gold": {"wcag_violation": false}, "criterion": "3.1.1", "index": 87}
+{"state": "<a style='padding:2px'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.5.5", "index": 88}
+{"state": "<a href='#skip'>Skip</a><nav>...</nav>", "gold": {"wcag_violation": true}, "criterion": "2.1.4", "index": 89}
+{"state": "<div style='width:1200px'>Fixed</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.4", "index": 90}
+{"state": "<p>Click the red button</p>", "gold": {"wcag_violation": true}, "criterion": "1.3.3", "index": 91}
+{"state": "<nav><a>Home</a></nav><nav><a>Home</a></nav>", "gold": {"wcag_violation": true}, "criterion": "3.2.3", "index": 92}
+{"state": "<p>Real text instead</p>", "gold": {"wcag_violation": false}, "criterion": "1.4.5", "index": 93}
+{"state": "<input type='image' src='submit.png'>", "gold": {"wcag_violation": true}, "criterion": "1.1.1", "index": 94}
+{"state": "<a href='/page'>Click here</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.4", "index": 95}
+{"state": "<a href='/1'>Link</a><a href='/2'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.5", "index": 96}
+{"state": "<p style='font-size:16px'>Readable text</p>", "gold": {"wcag_violation": false}, "criterion": "1.4.4", "index": 97}
+{"state": "<p style='color:red'>Error</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.1", "index": 98}
+{"state": "<a style='padding:12px'>Target</a>", "gold": {"wcag_violation": false}, "criterion": "2.5.8", "index": 99}
+{"state": "<nav><a>Home</a></nav>", "gold": {"wcag_violation": false}, "criterion": "3.2.3", "index": 100}
+{"state": "<nav><a>Home</a></nav><nav><a>Home</a></nav>", "gold": {"wcag_violation": true}, "criterion": "3.2.3", "index": 101}
+{"state": "<div style='width:1200px'>Fixed</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.4", "index": 102}
+{"state": "<div id='x' id='y'>Dup</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.1", "index": 103}
+{"state": "<p style='color:red'>Error</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.1", "index": 104}
+{"state": "<video src='movie.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.5", "index": 105}
+{"state": "<a href='/1'>Link</a><a href='/2'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.5", "index": 106}
+{"state": "<span onclick='click()' tabindex='0'>Click</span>", "gold": {"wcag_violation": true}, "criterion": "2.1.1", "index": 107}
+{"state": "<table><tr><td>Name</td><td>Age</td></tr></table>", "gold": {"wcag_violation": true}, "criterion": "1.3.1", "index": 108}
+{"state": "<p lang='en'>Hello <span lang='es'>Hola</span></p>", "gold": {"wcag_violation": false}, "criterion": "3.1.2", "index": 109}
+{"state": "<div id='x' id='y'>Dup</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.1", "index": 110}
+{"state": "<button aria-label='X'>Close</button>", "gold": {"wcag_violation": true}, "criterion": "2.5.3", "index": 111}
+{"state": "<form><input required aria-describedby='err'></form><div id='err'>Required</div>", "gold": {"wcag_violation": false}, "criterion": "3.3.1", "index": 112}
+{"state": "<div title='Tooltip'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.12", "index": 113}
+{"state": "<meta http-equiv='refresh' content='30'>", "gold": {"wcag_violation": true}, "criterion": "2.2.1", "index": 114}
+{"state": "<div aria-describedby='tip'>Hover</div><div id='tip' role='tooltip'>Tooltip</div>", "gold": {"wcag_violation": false}, "criterion": "1.4.12", "index": 115}
+{"state": "<svg><path stroke='#ccc' stroke-width='1' d='M0 0 L10 10'/></svg>", "gold": {"wcag_violation": true}, "criterion": "1.4.11", "index": 116}
+{"state": "<nav><a>Home</a></nav><nav><a>Home</a></nav>", "gold": {"wcag_violation": true}, "criterion": "3.2.3", "index": 117}
+{"state": "<a style='padding:12px'>Target</a>", "gold": {"wcag_violation": false}, "criterion": "2.5.8", "index": 118}
+{"state": "<audio src='speech.mp3'><track kind='captions' src='speech.vtt'></audio>", "gold": {"wcag_violation": false}, "criterion": "1.2.1", "index": 119}
+{"state": "<a href='#skip'>Skip</a><nav>...</nav>", "gold": {"wcag_violation": true}, "criterion": "2.1.4", "index": 120}
+{"state": "<a href='#main'>Skip to main</a><nav>...</nav><main id='main'>", "gold": {"wcag_violation": false}, "criterion": "2.1.4", "index": 121}
+{"state": "<input autocomplete='off'>", "gold": {"wcag_violation": true}, "criterion": "1.3.5", "index": 122}
+{"state": "<button onmouseover='show()' onfocus='show()'>Hover</button>", "gold": {"wcag_violation": false}, "criterion": "1.4.13", "index": 123}
+{"state": "<div style='float:right'>Sidebar</div><div>Main</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.2", "index": 124}
+{"state": "<svg><path stroke='#ccc' stroke-width='1' d='M0 0 L10 10'/></svg>", "gold": {"wcag_violation": true}, "criterion": "1.4.11", "index": 125}
+{"state": "<div style='float:right'>Sidebar</div><div>Main</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.2", "index": 126}
+{"state": "<div onkeydown='trap()' tabindex='0'>Trap</div>", "gold": {"wcag_violation": true}, "criterion": "2.1.2", "index": 127}
+{"state": "<input autocomplete='off'>", "gold": {"wcag_violation": true}, "criterion": "1.3.5", "index": 128}
+{"state": "<button aria-label='Search'>Search</button>", "gold": {"wcag_violation": false}, "criterion": "3.2.4", "index": 129}
+{"state": "<media src='clip.mp4'></media>", "gold": {"wcag_violation": true}, "criterion": "1.2.2", "index": 130}
+{"state": "<video src='movie.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.3", "index": 131}
+{"state": "<div><span>Label</span>Value</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.1", "index": 132}
+{"state": "<svg><path stroke='#333' stroke-width='2' d='M0 0 L10 10'/></svg>", "gold": {"wcag_violation": false}, "criterion": "1.4.11", "index": 133}
+{"state": "<meta http-equiv='refresh' content='30'>", "gold": {"wcag_violation": true}, "criterion": "2.2.1", "index": 134}
+{"state": "<button onmouseover='show()' onfocus='show()'>Hover</button>", "gold": {"wcag_violation": false}, "criterion": "1.4.13", "index": 135}
+{"state": "<div style='width:1200px'>Fixed</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.4", "index": 136}
+{"state": "<input type='image' src='submit.png'>", "gold": {"wcag_violation": true}, "criterion": "1.1.1", "index": 137}
+{"state": "<button aria-label='Search'>Search</button>", "gold": {"wcag_violation": false}, "criterion": "3.2.4", "index": 138}
+{"state": "<div title='Tooltip'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.12", "index": 139}
+{"state": "<a style='padding:2px'>Target</a>", "gold": {"wcag_violation": true}, "criterion": "2.5.8", "index": 140}
+{"state": "<form action='/pay'><input></form><p>Review before submitting</p>", "gold": {"wcag_violation": false}, "criterion": "3.3.4", "index": 141}
+{"state": "<nav><a>Home</a></nav><nav><a>Home</a></nav>", "gold": {"wcag_violation": true}, "criterion": "3.2.3", "index": 142}
+{"state": "<form><input required></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.1", "index": 143}
+{"state": "<video src='live.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.4", "index": 144}
+{"state": "<button aria-label='Search'>Search</button>", "gold": {"wcag_violation": false}, "criterion": "3.2.4", "index": 145}
+{"state": "<a style='padding:2px'>Target</a>", "gold": {"wcag_violation": true}, "criterion": "2.5.8", "index": 146}
+{"state": "<button aria-label='Close'>Close</button>", "gold": {"wcag_violation": false}, "criterion": "2.5.3", "index": 147}
+{"state": "<p style='color:red'>Error</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.1", "index": 148}
+{"state": "<video><source src='flash.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "2.3.1", "index": 149}
+{"state": "<a href='/1'>Link</a><a href='/2'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.5", "index": 150}
+{"state": "<nav><a>Home</a></nav><nav><a>Home</a></nav>", "gold": {"wcag_violation": true}, "criterion": "3.2.3", "index": 151}
+{"state": "<button onclick='submit()'>Real button</button>", "gold": {"wcag_violation": false}, "criterion": "2.1.1", "index": 152}
+{"state": "<button aria-label='Search'>Search</button><button aria-label='Search'>Search</button>", "gold": {"wcag_violation": true}, "criterion": "3.2.4", "index": 153}
+{"state": "<div role='checkbox' aria-checked='false'>Check</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.2", "index": 154}
+{"state": "<div>Content</div>", "gold": {"wcag_violation": true}, "criterion": "2.4.1", "index": 155}
+{"state": "<video><source src='flash.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "2.3.1", "index": 156}
+{"state": "<p>Error: invalid</p>", "gold": {"wcag_violation": true}, "criterion": "3.3.3", "index": 157}
+{"state": "<div onkeydown='trap()' tabindex='0'>Trap</div>", "gold": {"wcag_violation": true}, "criterion": "2.1.2", "index": 158}
+{"state": "<div aria-live='polite' aria-atomic='true'></div>", "gold": {"wcag_violation": false}, "criterion": "4.1.3", "index": 159}
+{"state": "<meta http-equiv='refresh' content='30'>", "gold": {"wcag_violation": true}, "criterion": "2.2.1", "index": 160}
+{"state": "<p style='color:#666;background:#fff'>Low contrast</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.3", "index": 161}
+{"state": "<video><source src='flash.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "2.3.1", "index": 162}
+{"state": "<nav><a>Home</a></nav><nav><a>Home</a></nav>", "gold": {"wcag_violation": true}, "criterion": "3.2.3", "index": 163}
+{"state": "<div aria-live='polite' aria-atomic='true'></div>", "gold": {"wcag_violation": false}, "criterion": "4.1.3", "index": 164}
+{"state": "<button aria-label='X'>Close</button>", "gold": {"wcag_violation": true}, "criterion": "2.5.3", "index": 165}
+{"state": "<div id='x'>Unique</div>", "gold": {"wcag_violation": false}, "criterion": "4.1.1", "index": 166}
+{"state": "<div style='max-width:1200px;width:100%'>Responsive</div>", "gold": {"wcag_violation": false}, "criterion": "1.3.4", "index": 167}
+{"state": "<div ondrag='move()'></div>", "gold": {"wcag_violation": true}, "criterion": "2.5.1", "index": 168}
+{"state": "<input autocomplete='off'>", "gold": {"wcag_violation": true}, "criterion": "1.3.5", "index": 169}
+{"state": "<p>Click the red button</p>", "gold": {"wcag_violation": true}, "criterion": "1.3.3", "index": 170}
+{"state": "<div onclick='submit()'>Submit</div>", "gold": {"wcag_violation": true}, "criterion": "2.5.2", "index": 171}
+{"state": "<div style='float:right'>Sidebar</div><div>Main</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.2", "index": 172}
+{"state": "<p>Error: invalid</p>", "gold": {"wcag_violation": true}, "criterion": "3.3.3", "index": 173}
+{"state": "<a href='#skip'>Skip</a><nav>...</nav>", "gold": {"wcag_violation": true}, "criterion": "2.1.4", "index": 174}
+{"state": "<a href='#skip'>Skip</a><nav>...</nav>", "gold": {"wcag_violation": true}, "criterion": "2.1.4", "index": 175}
+{"state": "<button onmouseover='show()' onfocus='show()'>Hover</button>", "gold": {"wcag_violation": false}, "criterion": "1.4.13", "index": 176}
+{"state": "<div aria-live='polite'></div>", "gold": {"wcag_violation": true}, "criterion": "4.1.3", "index": 177}
+{"state": "<img src='photo.jpg' alt='Team photo'>", "gold": {"wcag_violation": false}, "criterion": "1.1.1", "index": 178}
+{"state": "<div aria-live='polite'></div>", "gold": {"wcag_violation": true}, "criterion": "4.1.3", "index": 179}
+{"state": "<button onclick='submit()' onmouseup='confirm()'>Submit</button>", "gold": {"wcag_violation": false}, "criterion": "2.5.2", "index": 180}
+{"state": "<html><body>Page</body></html>", "gold": {"wcag_violation": true}, "criterion": "2.4.2", "index": 181}
+{"state": "<html><body>Page</body></html>", "gold": {"wcag_violation": true}, "criterion": "2.4.2", "index": 182}
+{"state": "<nav><a>Home</a></nav><nav><a>Home</a></nav>", "gold": {"wcag_violation": true}, "criterion": "3.2.3", "index": 183}
+{"state": "<form action='/pay'><input></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.4", "index": 184}
+{"state": "<label for='email'>Email</label><input id='email' name='email' type='email'>", "gold": {"wcag_violation": false}, "criterion": "3.3.2", "index": 185}
+{"state": "<div onkeydown='trap()' tabindex='0'>Trap</div>", "gold": {"wcag_violation": true}, "criterion": "2.1.2", "index": 186}
+{"state": "<div onclick='submit()' tabindex='0'>Fake button</div>", "gold": {"wcag_violation": true}, "criterion": "2.1.1", "index": 187}
+{"state": "<video><source src='flash.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "2.3.1", "index": 188}
+{"state": "<div onmouseover='show()'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.13", "index": 189}
+{"state": "<img src='text.png'>", "gold": {"wcag_violation": true}, "criterion": "1.4.5", "index": 190}
+{"state": "<input autocomplete='email'>", "gold": {"wcag_violation": false}, "criterion": "1.3.5", "index": 191}
+{"state": "<div style='max-width:1200px;width:100%'>Responsive</div>", "gold": {"wcag_violation": false}, "criterion": "1.3.4", "index": 192}
+{"state": "<video src='demo.mp4'><track kind='captions' src='demo.vtt' srclang='en'></video>", "gold": {"wcag_violation": false}, "criterion": "1.2.2", "index": 193}
+{"state": "<svg><path stroke='#ccc' stroke-width='1' d='M0 0 L10 10'/></svg>", "gold": {"wcag_violation": true}, "criterion": "1.4.11", "index": 194}
+{"state": "<input onchange='submit()'>", "gold": {"wcag_violation": true}, "criterion": "3.2.2", "index": 195}
+{"state": "<p>Click the red button</p>", "gold": {"wcag_violation": true}, "criterion": "1.3.3", "index": 196}
+{"state": "<a style='padding:2px'>Target</a>", "gold": {"wcag_violation": true}, "criterion": "2.5.8", "index": 197}
+{"state": "<div>Content</div>", "gold": {"wcag_violation": true}, "criterion": "2.4.1", "index": 198}
+{"state": "<video><source src='flash.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "2.3.1", "index": 199}
+{"state": "<audio src='speech.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.2.1", "index": 200}
+{"state": "<audio src='speech.mp3'><track kind='captions' src='speech.vtt'></audio>", "gold": {"wcag_violation": false}, "criterion": "1.2.1", "index": 201}
+{"state": "<a style='padding:2px'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.5.5", "index": 202}
+{"state": "<div onmousemove='action()'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "2.5.4", "index": 203}
+{"state": "<button>Esc to close</button>", "gold": {"wcag_violation": false}, "criterion": "2.1.2", "index": 204}
+{"state": "<p style='font-size:10px'>Tiny text</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.4", "index": 205}
+{"state": "<a href='/'>Go</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.4", "index": 206}
+{"state": "<button aria-label='Search'>Search</button><button aria-label='Search'>Search</button>", "gold": {"wcag_violation": true}, "criterion": "3.2.4", "index": 207}
+{"state": "<button onclick='action()'>Action</button>", "gold": {"wcag_violation": false}, "criterion": "2.5.4", "index": 208}
+{"state": "<div onclick='submit()'>Submit</div>", "gold": {"wcag_violation": true}, "criterion": "2.5.2", "index": 209}
+{"state": "<p style='font-size:10px'>Tiny text</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.4", "index": 210}
+{"state": "<img src='photo.jpg' alt='Team photo'>", "gold": {"wcag_violation": false}, "criterion": "1.1.1", "index": 211}
+{"state": "<a href='/'>Go</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.4", "index": 212}
+{"state": "<p lang='en'>Hello <span lang='es'>Hola</span></p>", "gold": {"wcag_violation": false}, "criterion": "3.1.2", "index": 213}
+{"state": "<p>Error: invalid</p>", "gold": {"wcag_violation": true}, "criterion": "3.3.3", "index": 214}
+{"state": "<form action='/pay'><input></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.4", "index": 215}
+{"state": "<a style='padding:12px'>Target</a>", "gold": {"wcag_violation": false}, "criterion": "2.5.8", "index": 216}
+{"state": "<video><source src='flash.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "2.3.1", "index": 217}
+{"state": "<p>Real text instead</p>", "gold": {"wcag_violation": false}, "criterion": "1.4.5", "index": 218}
+{"state": "<input autocomplete='email'>", "gold": {"wcag_violation": false}, "criterion": "1.3.5", "index": 219}
+{"state": "<div aria-live='polite'></div>", "gold": {"wcag_violation": true}, "criterion": "4.1.3", "index": 220}
+{"state": "<div style='width:400px;overflow:hidden'>Content</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.10", "index": 221}
+{"state": "<video src='movie.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.3", "index": 222}
+{"state": "<div style='width:1200px'>Fixed</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.4", "index": 223}
+{"state": "<button aria-label='X'>Close</button>", "gold": {"wcag_violation": true}, "criterion": "2.5.3", "index": 224}
+{"state": "<span onclick='click()' tabindex='0'>Click</span>", "gold": {"wcag_violation": true}, "criterion": "2.1.1", "index": 225}
+{"state": "<html><body>Page</body></html>", "gold": {"wcag_violation": true}, "criterion": "2.4.2", "index": 226}
+{"state": "<form><input required></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.1", "index": 227}
+{"state": "<div>Static text</div>", "gold": {"wcag_violation": false}, "criterion": "2.2.2", "index": 228}
+{"state": "<p style='color:red'>Error</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.1", "index": 229}
+{"state": "<audio autoplay><source src='music.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.4.2", "index": 230}
+{"state": "<div>Content</div>", "gold": {"wcag_violation": true}, "criterion": "2.4.1", "index": 231}
+{"state": "<!-- No auto-refresh -->", "gold": {"wcag_violation": false}, "criterion": "2.2.1", "index": 232}
+{"state": "<svg><path stroke='#333' stroke-width='2' d='M0 0 L10 10'/></svg>", "gold": {"wcag_violation": false}, "criterion": "1.4.11", "index": 233}
+{"state": "<audio autoplay><source src='music.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.4.2", "index": 234}
+{"state": "<form action='/pay'><input></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.4", "index": 235}
+{"state": "<div id='x' id='y'>Dup</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.1", "index": 236}
+{"state": "<video src='live.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.4", "index": 237}
+{"state": "<input autocomplete='email'>", "gold": {"wcag_violation": false}, "criterion": "1.3.5", "index": 238}
+{"state": "<a href='/'>Go home</a>", "gold": {"wcag_violation": false}, "criterion": "2.4.4", "index": 239}
+{"state": "<div style='float:right'>Sidebar</div><div>Main</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.2", "index": 240}
+{"state": "<img src='chart.png' alt='Revenue chart'>", "gold": {"wcag_violation": false}, "criterion": "1.1.1", "index": 241}
+{"state": "<input autocomplete='off'>", "gold": {"wcag_violation": true}, "criterion": "1.3.5", "index": 242}
+{"state": "<button aria-label='X'>Close</button>", "gold": {"wcag_violation": true}, "criterion": "2.5.3", "index": 243}
+{"state": "<p lang='en'>Hello <span lang='es'>Hola</span></p>", "gold": {"wcag_violation": false}, "criterion": "3.1.2", "index": 244}
+{"state": "<a href='/'>Go home</a>", "gold": {"wcag_violation": false}, "criterion": "2.4.4", "index": 245}
+{"state": "<div>Content</div>", "gold": {"wcag_violation": true}, "criterion": "2.4.1", "index": 246}
+{"state": "<video src='movie.mp4'><track kind='descriptions' src='movie.vtt'></video>", "gold": {"wcag_violation": false}, "criterion": "1.2.3", "index": 247}
+{"state": "<div>Content</div>", "gold": {"wcag_violation": true}, "criterion": "2.4.1", "index": 248}
+{"state": "<div onkeydown='trap()' tabindex='0'>Trap</div>", "gold": {"wcag_violation": true}, "criterion": "2.1.2", "index": 249}
+{"state": "<div role='checkbox' aria-checked='false'>Check</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.2", "index": 250}
+{"state": "<button onclick='submit()'>Real button</button>", "gold": {"wcag_violation": false}, "criterion": "2.1.1", "index": 251}
+{"state": "<button aria-label='Close'>Close</button>", "gold": {"wcag_violation": false}, "criterion": "2.5.3", "index": 252}
+{"state": "<div ondrag='move()'></div>", "gold": {"wcag_violation": true}, "criterion": "2.5.1", "index": 253}
+{"state": "<audio controls><source src='music.mp3'></audio>", "gold": {"wcag_violation": false}, "criterion": "1.4.2", "index": 254}
+{"state": "<audio autoplay><source src='music.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.4.2", "index": 255}
+{"state": "<a style='padding:12px'>Target</a>", "gold": {"wcag_violation": false}, "criterion": "2.5.8", "index": 256}
+{"state": "<div aria-live='polite'></div>", "gold": {"wcag_violation": true}, "criterion": "4.1.3", "index": 257}
+{"state": "<div style='width:1200px'>Fixed</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.4", "index": 258}
+{"state": "<p>Click the red button</p>", "gold": {"wcag_violation": true}, "criterion": "1.3.3", "index": 259}
+{"state": "<audio src='speech.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.2.1", "index": 260}
+{"state": "<form><input required></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.1", "index": 261}
+{"state": "<div><span>Label</span>Value</div>", "gold": {"wcag_violation": true}, "criterion": "1.3.1", "index": 262}
+{"state": "<form><input required aria-describedby='err'></form><div id='err'>Required</div>", "gold": {"wcag_violation": false}, "criterion": "3.3.1", "index": 263}
+{"state": "<button aria-label='Search'>Search</button><button aria-label='Search'>Search</button>", "gold": {"wcag_violation": true}, "criterion": "3.2.4", "index": 264}
+{"state": "<p lang='en'>Hello <span>Hola</span></p>", "gold": {"wcag_violation": true}, "criterion": "3.1.2", "index": 265}
+{"state": "<meta http-equiv='refresh' content='30'>", "gold": {"wcag_violation": true}, "criterion": "2.2.1", "index": 266}
+{"state": "<input onchange='submit()'>", "gold": {"wcag_violation": true}, "criterion": "3.2.2", "index": 267}
+{"state": "<div role='checkbox' aria-checked='false'>Check</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.2", "index": 268}
+{"state": "<audio autoplay><source src='music.mp3'></audio>", "gold": {"wcag_violation": true}, "criterion": "1.4.2", "index": 269}
+{"state": "<marquee>Scrolling</marquee>", "gold": {"wcag_violation": true}, "criterion": "2.2.2", "index": 270}
+{"state": "<form><input required></form>", "gold": {"wcag_violation": true}, "criterion": "3.3.1", "index": 271}
+{"state": "<a href='/1'>Link</a><a href='/2'>Link</a>", "gold": {"wcag_violation": true}, "criterion": "2.4.5", "index": 272}
+{"state": "<span onclick='click()' tabindex='0'>Click</span>", "gold": {"wcag_violation": true}, "criterion": "2.1.1", "index": 273}
+{"state": "<div id='x' id='y'>Dup</div>", "gold": {"wcag_violation": true}, "criterion": "4.1.1", "index": 274}
+{"state": "<video src='demo.mp4'></video>", "gold": {"wcag_violation": true}, "criterion": "1.2.2", "index": 275}
+{"state": "<div aria-live='polite'></div>", "gold": {"wcag_violation": true}, "criterion": "4.1.3", "index": 276}
+{"state": "<div onmousemove='action()'>Hover</div>", "gold": {"wcag_violation": true}, "criterion": "2.5.4", "index": 277}
+{"state": "<div>Content</div>", "gold": {"wcag_violation": true}, "criterion": "2.4.1", "index": 278}
+{"state": "<input autocomplete='off'>", "gold": {"wcag_violation": true}, "criterion": "1.3.5", "index": 279}
+{"state": "<p lang='en'>Hello <span lang='es'>Hola</span></p>", "gold": {"wcag_violation": false}, "criterion": "3.1.2", "index": 280}
+{"state": "<div>Content</div>", "gold": {"wcag_violation": true}, "criterion": "2.4.1", "index": 281}
+{"state": "<img src='text.png'>", "gold": {"wcag_violation": true}, "criterion": "1.4.5", "index": 282}
+{"state": "<div style='width:400px;overflow:hidden'>Content</div>", "gold": {"wcag_violation": true}, "criterion": "1.4.10", "index": 283}
+{"state": "<p style='color:red'>Error</p>", "gold": {"wcag_violation": true}, "criterion": "1.4.1", "index": 284}
+{"state": "<div aria-live='polite'></div>", "gold": {"wcag_violation": true}, "criterion": "4.1.3", "index": 285}
+{"state": "<span onclick='click()' tabindex='0'>Click</span>", "gold": {"wcag_violation": true}, "criterion": "2.1.1", "index": 286}
+{"state": "<div lang='en'>Welcome</div>", "gold": {"wcag_violation": false}, "criterion": "3.1.1", "index": 287}
+{"state": "<a href='/1'>Home</a><a href='/2'>About</a>", "gold": {"wcag_violation": false}, "criterion": "2.4.5", "index": 288}
+{"state": "<nav><a>Home</a></nav>", "gold": {"wcag_violation": false}, "criterion": "3.2.3", "index": 289}
+{"state": "<a href='#skip'>Skip</a><nav>...</nav>", "gold": {"wcag_violation": true}, "criterion": "2.1.4", "index": 290}
+{"state": "<a style='padding:12px'>Target</a>", "gold": {"wcag_violation": false}, "criterion": "2.5.8", "index": 291}
+{"state": "<div aria-live='polite'></div>", "gold": {"wcag_violation": true}, "criterion": "4.1.3", "index": 292}
+{"state": "<button aria-label='X'>Close</button>", "gold": {"wcag_violation": true}, "criterion": "2.5.3", "index": 293}
+{"state": "<div>Static text</div>", "gold": {"wcag_violation": false}, "criterion": "2.2.2", "index": 294}
+{"state": "<html><body>Page</body></html>", "gold": {"wcag_violation": true}, "criterion": "3.1.1", "index": 295}
+{"state": "<p>Error: invalid</p>", "gold": {"wcag_violation": true}, "criterion": "3.3.3", "index": 296}
+{"state": "<button aria-label='X'>Close</button>", "gold": {"wcag_violation": true}, "criterion": "2.5.3", "index": 297}
+{"state": "<html><body>Page</body></html>", "gold": {"wcag_violation": true}, "criterion": "3.1.1", "index": 298}
+{"state": "<input><button>Submit</button>", "gold": {"wcag_violation": false}, "criterion": "3.2.2", "index": 299}

@@ -1,0 +1,46 @@
+request,tool,ready
+"HTML snippet: <img src=""test.jpg"" alt="""">",none,true
+"HTML snippet: <img src=""test.jpg"" alt=""Product image"">",none,true
+"HTML snippet: <input type=""image"" src=""submit.png"">",none,true
+"HTML snippet: <input type=""image"" src=""submit.png"">",none,true
+"HTML snippet: <img src=""test.jpg"" alt=""Product image"">",none,true
+"HTML snippet: <video src=""test.mp4""></video>",none,true
+"HTML snippet: <video src=""test.mp4""></video>",none,true
+"HTML snippet: <video controls src=""test.mp4""><option>no track</option></video>",none,true
+"HTML snippet: <video src=""test.mp4""></video>",none,true
+"HTML snippet: <video><source src=""test.mp4"" type=""video/mp4""><track kind=""captions""></video>",none,true
+"HTML snippet: <table><td>Cell 1</td><td>Cell 2</td></table>",none,true
+"HTML snippet: <ul><li>Item 1</li></ul><li>Item 2</li>",none,true
+"HTML snippet: <table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Cell</td></tr></tbody></table>",none,true
+"HTML snippet: <table><thead><tr><th>Header</th></tr></thead><tbody><tr><td>Cell</td></tr></tbody></table>",none,true
+"HTML snippet: <ul><li>Item 1</li></ul><li>Item 2</li>",none,true
+"HTML snippet: <p style=""color:#666"">Text</p>",none,true
+"HTML snippet: <div style=""background:#fff"">Text</div>",none,true
+"HTML snippet: <div style=""background:#ccc"">Text</div>",none,true
+"HTML snippet: <div style=""background:#ccc"">Text</div>",none,true
+"HTML snippet: <p style=""color:#666"">Text</p>",none,true
+"HTML snippet: <p style=""line-height:1.5"">Tight</p>",none,true
+"HTML snippet: <div style=""height:10px"">Tiny</div>",none,true
+"HTML snippet: <div style=""height:10px"">Tiny</div>",none,true
+"HTML snippet: <p style=""line-height:1.5"">Tight</p>",none,true
+"HTML snippet: <div style=""font-size:14px"">Tiny</div>",none,true
+"HTML snippet: <p onmouseover=""hover()"">Link</p>",none,true
+"HTML snippet: <p onmouseover=""hover()"">Link</p>",none,true
+"HTML snippet: <span onclick=""click()"" tabindex=""0"">Button</span>",none,true
+"HTML snippet: <button onclick=""do()"">Fake</button>",none,true
+"HTML snippet: <input type=""button"" onclick=""click()"">",none,true
+"HTML snippet: <a href=""/"">Go</a>",none,true
+"HTML snippet: <a href=""#"" aria-label=""Home"">Click</a>",none,true
+"HTML snippet: <a href=""#"">Click</a>",none,true
+"HTML snippet: <a href=""/"">Go</a>",none,true
+"HTML snippet: <a href=""/"">Go home</a>",none,true
+"HTML snippet: <section>Missing lang</section>",none,true
+"HTML snippet: <section>Missing lang</section>",none,true
+"HTML snippet: <div>No lang</div>",none,true
+"HTML snippet: <section>Missing lang</section>",none,true
+"HTML snippet: <html><body>Page</body></html>",none,true
+"HTML snippet: <input name=""email"" type=""email"">",none,true
+"HTML snippet: <input name=""email"" type=""email"">",none,true
+"HTML snippet: <form><label>Email</label><input required></form>",none,true
+"HTML snippet: <input name=""email"" type=""email"">",none,true
+"HTML snippet: <div><label for=""email"">Email:</label><input type=""email""></div>",none,true
