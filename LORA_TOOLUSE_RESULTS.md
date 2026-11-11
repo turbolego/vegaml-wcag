@@ -51,8 +51,8 @@ gate/up/down_proj, α=64), bf16, T4, 2 epochs, lr 2e-4, on the 300 fit rows.
 
 Kernels: `hummern/lora-tooluse-skill-v7` (final), adapters in
 `out_tooluse_lora/` → published at
-https://huggingface.co/Hummern/qwen3.5-0.8b-wcag-gauntlet-lora
-(`adapter_model.safetensors` + tokenizer + `lora_meta.json`).
+https://huggingface.co/Turbolego/qwen3.5-0.8b-wcag-gauntlet-lora
+(`adapter_model.safetensors` + tokenizer + `lora_meta.json` + full model card).
 Sample predictions: `w3c\nyes`, `axe\nyes`, `qualweb\nyes` — exact, no prose.
 
 ### Lessons (why v5/v6 showed 0%)
