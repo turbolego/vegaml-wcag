@@ -1,0 +1,18 @@
+{
+  "next_tool": {
+    "type": "choice",
+    "criteria": [
+      "w3c",
+      "axe",
+      "pa11y",
+      "qualweb",
+      "fix",
+      "check"
+    ],
+    "instructions": "You are mid-iteration on the AI-WCAG-Gauntlet page. Which validator or action comes next per the wcag-skill workflow: w3c (structural errors open), axe (accessibility violations open, structure clean), pa11y (axe clean, pa11y issues open), qualweb (only ACT-rule failures open), fix (no violations, code/tag work remains), or check (all clear, ready for the official iteration check)?"
+  },
+  "run_precheck": {
+    "type": "boolean",
+    "instructions": "Before the benchmark iteration check, should you run a validator (axe-core, pa11y, or QualWeb) on your own current page code now?"
+  }
+}
